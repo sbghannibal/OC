@@ -9,6 +9,13 @@ final class Router
     /** @var array<string, array<string, callable>> */
     private array $routes = [];
 
+    /**
+     * Dynamic routes with named placeholders, e.g. /events/{slug}.
+     *
+     * @var array<string, list<array{pattern: string, params: list<string>, handler: callable}>>
+     */
+    private array $dynamicRoutes = [];
+
     private string $basePath;
 
     public function __construct(string $basePath = '')
@@ -29,12 +36,72 @@ final class Router
 
     public function get(string $path, callable $handler): void
     {
-        $this->routes['GET'][$path] = $handler;
+        $this->addRoute('GET', $path, $handler);
     }
 
     public function post(string $path, callable $handler): void
     {
-        $this->routes['POST'][$path] = $handler;
+        $this->addRoute('POST', $path, $handler);
+    }
+
+    private function addRoute(string $method, string $path, callable $handler): void
+    {
+        if (strpos($path, '{') === false) {
+            $this->routes[$method][$path] = $handler;
+            return;
+        }
+
+        // Extract parameter names and build a regex pattern.
+        // [^/]+ safely excludes '/' (no path traversal); '?' and '#' are already
+        // stripped by parse_url() before dispatch() is called.
+        $params  = [];
+        $pattern = preg_replace_callback('/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/', static function (array $m) use (&$params): string {
+            $params[] = $m[1];
+            return '(?P<' . $m[1] . '>[^/]+)';
+        }, $path);
+
+        $this->dynamicRoutes[$method][] = [
+            'pattern' => '#^' . $pattern . '$#',
+            'params'  => $params,
+            'handler' => $handler,
+        ];
+    }
+
+    /**
+     * Try to match a dynamic route for the given method and URI.
+     *
+     * @return array{handler: callable, params: array<string,string>}|null
+     */
+    private function matchDynamic(string $method, string $uri): ?array
+    {
+        foreach ($this->dynamicRoutes[$method] ?? [] as $route) {
+            if (preg_match($route['pattern'], $uri, $matches)) {
+                $params = [];
+                foreach ($route['params'] as $name) {
+                    $params[$name] = $matches[$name] ?? '';
+                }
+                return ['handler' => $route['handler'], 'params' => $params];
+            }
+        }
+        return null;
+    }
+
+    /** Check whether any registered method recognises this URI (static or dynamic). */
+    private function uriKnown(string $uri): bool
+    {
+        foreach ($this->routes as $routes) {
+            if (isset($routes[$uri])) {
+                return true;
+            }
+        }
+        foreach ($this->dynamicRoutes as $methodRoutes) {
+            foreach ($methodRoutes as $route) {
+                if (preg_match($route['pattern'], $uri)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public function dispatch(): void
@@ -55,16 +122,21 @@ final class Router
             $uri = rtrim($uri, '/');
         }
 
-        // Check if the URI exists for any method (to distinguish 404 vs 405)
-        $uriKnown = false;
-        foreach ($this->routes as $routes) {
-            if (isset($routes[$uri])) {
-                $uriKnown = true;
-                break;
-            }
+        // Try static match first
+        if (isset($this->routes[$method][$uri])) {
+            ($this->routes[$method][$uri])();
+            return;
         }
 
-        if ($uriKnown && !isset($this->routes[$method][$uri])) {
+        // Try dynamic match
+        $match = $this->matchDynamic($method, $uri);
+        if ($match !== null) {
+            ($match['handler'])($match['params']);
+            return;
+        }
+
+        // Distinguish 404 vs 405
+        if ($this->uriKnown($uri)) {
             http_response_code(405);
             $errorFile = __DIR__ . '/../../app/Views/errors/405.php';
             if (is_file($errorFile)) {
@@ -72,11 +144,6 @@ final class Router
             } else {
                 echo '<h1>405 – Methode niet toegestaan</h1>';
             }
-            return;
-        }
-
-        if (isset($this->routes[$method][$uri])) {
-            ($this->routes[$method][$uri])();
             return;
         }
 

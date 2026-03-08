@@ -28,6 +28,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="<?= htmlspecialchars($basePath . '/admin/inschrijvingen', ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="bi bi-people-fill"></i>Inschrijvingen
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="<?= htmlspecialchars($basePath . '/admin/users', ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bi bi-people"></i>Gebruikers
                     </a>

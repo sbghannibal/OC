@@ -22,8 +22,10 @@ $config = require $configFile;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\AuditLogController;
 use App\Controllers\Admin\EventController;
+use App\Controllers\Admin\RegistrationController;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Public\AccessCodeController;
+use App\Controllers\Public\EventController as PublicEventController;
 use App\Controllers\Public\HomeController;
 use App\Core\App;
 use App\Core\Router;
@@ -47,6 +49,23 @@ $router->get('/toegang', function () use ($config): void {
 
 $router->post('/toegang', function () use ($config): void {
     (new AccessCodeController($config))->submit();
+});
+
+// ── Public event routes ────────────────────────────────────────────────────
+$router->get('/events', function () use ($config): void {
+    (new PublicEventController($config))->index();
+});
+
+$router->get('/events/{slug}', function (array $params) use ($config): void {
+    (new PublicEventController($config))->show($params['slug']);
+});
+
+$router->get('/events/{slug}/deelnemen', function (array $params) use ($config): void {
+    (new PublicEventController($config))->registerForm($params['slug']);
+});
+
+$router->post('/events/{slug}/deelnemen', function (array $params) use ($config): void {
+    (new PublicEventController($config))->registerSubmit($params['slug']);
 });
 
 // ── Admin routes ───────────────────────────────────────────────────────────
@@ -102,6 +121,15 @@ $router->post('/admin/users/delete', function () use ($config): void {
 // ── Audit log route ────────────────────────────────────────────────────────
 $router->get('/admin/audit-log', function () use ($config): void {
     (new AuditLogController($config))->index();
+});
+
+// ── Registrations routes ───────────────────────────────────────────────────
+$router->get('/admin/inschrijvingen', function () use ($config): void {
+    (new RegistrationController($config))->index();
+});
+
+$router->get('/admin/inschrijvingen.csv', function () use ($config): void {
+    (new RegistrationController($config))->exportCsv();
 });
 
 $app = new App($router);

@@ -60,4 +60,13 @@ final class Event
         $stmt->execute([':slug' => $slug]);
         return (int) $stmt->fetchColumn() > 0;
     }
+
+    /** @return array<string,mixed>|null */
+    public static function findBySlug(\PDO $pdo, string $slug): ?array
+    {
+        $stmt = $pdo->prepare("SELECT * FROM events WHERE slug = :slug LIMIT 1");
+        $stmt->execute([':slug' => $slug]);
+        $row = $stmt->fetch();
+        return ($row !== false) ? $row : null;
+    }
 }

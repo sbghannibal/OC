@@ -66,5 +66,17 @@ final class Database
             INDEX idx_audit_user    (user_id),
             INDEX idx_audit_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Registrations – participants who signed up for an event
+        $pdo->exec("CREATE TABLE IF NOT EXISTS registrations (
+            id         INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            event_id   INT          NOT NULL,
+            naam       VARCHAR(255) NOT NULL,
+            email      VARCHAR(255) NOT NULL,
+            telefoon   VARCHAR(50)  DEFAULT NULL,
+            opmerking  TEXT         DEFAULT NULL,
+            created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_reg_event (event_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 }

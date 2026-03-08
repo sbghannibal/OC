@@ -17,6 +17,9 @@
         <div class="card-body">
             <form method="post" action="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>">
                 <?= \App\Core\Csrf::field() ?>
+                <?php if (!empty($returnTo)): ?>
+                <input type="hidden" name="return" value="<?= htmlspecialchars($returnTo, ENT_QUOTES, 'UTF-8') ?>">
+                <?php endif; ?>
                 <div class="mb-3">
                     <label for="code" class="form-label">Toegangscode</label>
                     <input type="text" class="form-control form-control-lg" id="code" name="code"
