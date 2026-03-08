@@ -2,10 +2,15 @@
 /** @var array<string,mixed> $event */
 /** @var list<array<string,mixed>> $classes */
 /** @var list<array<string,mixed>> $groups */
+/** @var list<array<string,mixed>> $children */
 /** @var list<string> $errors */
 /** @var array<string,mixed> $old */
+/** @var array<string,mixed>|null $duplicateChild */
+/** @var array<string,mixed> $pendingChildData */
 $oldKlasId    = (int) ($old['klas_id'] ?? 0);
 $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
+$oldChildSel  = (string) ($old['child_select'] ?? '');
+$formAction   = htmlspecialchars($basePath . '/events/' . rawurlencode($event['slug']) . '/deelnemen', ENT_QUOTES, 'UTF-8');
 ?>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
@@ -39,46 +44,150 @@ $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
                 </div>
                 <?php endif; ?>
 
-                <form method="post"
-                      action="<?= htmlspecialchars($basePath . '/events/' . rawurlencode($event['slug']) . '/deelnemen', ENT_QUOTES, 'UTF-8') ?>"
-                      id="regForm">
+                <?php if ($duplicateChild !== null): ?>
+                <!-- ── Duplicate child confirmation ──────────────────────── -->
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Mogelijk bestaand kind gevonden</h5>
+                    <p class="mb-2">
+                        We hebben een kind met een gelijkaardige naam gevonden in uw account:
+                        <strong><?= htmlspecialchars((string) $duplicateChild['first_name'] . (!empty($duplicateChild['last_name']) ? ' ' . $duplicateChild['last_name'] : ''), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if (!empty($duplicateChild['klas_name'])): ?>
+                        (<?= htmlspecialchars((string) $duplicateChild['klas_name'], ENT_QUOTES, 'UTF-8') ?>)
+                        <?php endif; ?>
+                    </p>
+                    <p class="mb-3">Wat wilt u doen?</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <!-- Use existing child -->
+                        <form method="post" action="<?= $formAction ?>" class="d-inline">
+                            <?= \App\Core\Csrf::field() ?>
+                            <input type="hidden" name="child_select"     value="new">
+                            <input type="hidden" name="child_action"     value="use_existing">
+                            <input type="hidden" name="confirm_child_id" value="<?= (int) $duplicateChild['id'] ?>">
+                            <input type="hidden" name="child_first_name" value="<?= htmlspecialchars((string) ($pendingChildData['first_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="child_last_name"  value="<?= htmlspecialchars((string) ($pendingChildData['last_name']  ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="child_birthdate"  value="<?= htmlspecialchars((string) ($pendingChildData['birthdate']   ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="klas_id"          value="<?= (int) ($pendingChildData['klas_id'] ?? 0) ?>">
+                            <input type="hidden" name="telefoon"         value="<?= htmlspecialchars((string) ($old['telefoon'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="opmerking"        value="<?= htmlspecialchars((string) ($old['opmerking'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <?php foreach ($oldItemIds as $iid): ?>
+                            <input type="hidden" name="option_group_restore[]" value="<?= (int) $iid ?>">
+                            <?php endforeach; ?>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-person-check me-1"></i>Bestaand kind gebruiken
+                            </button>
+                        </form>
+                        <!-- Create new child anyway -->
+                        <form method="post" action="<?= $formAction ?>" class="d-inline">
+                            <?= \App\Core\Csrf::field() ?>
+                            <input type="hidden" name="child_select"    value="new">
+                            <input type="hidden" name="child_action"    value="create_new">
+                            <input type="hidden" name="child_first_name" value="<?= htmlspecialchars((string) ($pendingChildData['first_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="child_last_name"  value="<?= htmlspecialchars((string) ($pendingChildData['last_name']  ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="child_birthdate"  value="<?= htmlspecialchars((string) ($pendingChildData['birthdate']   ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="klas_id"          value="<?= (int) ($pendingChildData['klas_id'] ?? 0) ?>">
+                            <input type="hidden" name="telefoon"         value="<?= htmlspecialchars((string) ($old['telefoon'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="opmerking"        value="<?= htmlspecialchars((string) ($old['opmerking'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <?php foreach ($oldItemIds as $iid): ?>
+                            <input type="hidden" name="option_group_restore[]" value="<?= (int) $iid ?>">
+                            <?php endforeach; ?>
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-person-plus me-1"></i>Toch nieuw kind aanmaken
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <?php else: ?>
+                <!-- ── Main registration form ────────────────────────────── -->
+                <form method="post" action="<?= $formAction ?>" id="regForm">
                     <?= \App\Core\Csrf::field() ?>
 
-                    <div class="mb-3">
-                        <label for="naam" class="form-label fw-semibold">Naam <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="naam" name="naam" required
-                               value="<?= htmlspecialchars((string) ($old['naam'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Voornaam Achternaam">
-                    </div>
+                    <!-- ── Child selection ──────────────────────────────── -->
+                    <fieldset class="mb-4">
+                        <legend class="fw-semibold fs-6 mb-2">
+                            <i class="bi bi-people me-1"></i>Kind <span class="text-danger">*</span>
+                        </legend>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold">E-mailadres <span class="text-danger">*</span></label>
-                        <input type="email" class="form-control" id="email" name="email" required
-                               value="<?= htmlspecialchars((string) ($old['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="naam@voorbeeld.nl">
-                    </div>
+                        <?php foreach ($children as $child): ?>
+                        <?php $childVal = 'existing_' . (int) $child['id']; ?>
+                        <div class="form-check">
+                            <input class="form-check-input child-radio" type="radio"
+                                   name="child_select" id="child-<?= (int) $child['id'] ?>"
+                                   value="<?= htmlspecialchars($childVal, ENT_QUOTES, 'UTF-8') ?>"
+                                   <?= ($oldChildSel === $childVal) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="child-<?= (int) $child['id'] ?>">
+                                <strong><?= htmlspecialchars((string) $child['first_name'] . (!empty($child['last_name']) ? ' ' . $child['last_name'] : ''), ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?php if (!empty($child['klas_name'])): ?>
+                                <span class="text-muted small">(<?= htmlspecialchars((string) $child['klas_name'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                                <?php endif; ?>
+                            </label>
+                        </div>
+                        <?php endforeach; ?>
 
-                    <div class="mb-3">
-                        <label for="telefoon" class="form-label fw-semibold">Gsm-nummer <span class="text-danger">*</span></label>
-                        <input type="tel" class="form-control" id="telefoon" name="telefoon" required
-                               value="<?= htmlspecialchars((string) ($old['telefoon'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="0470 12 34 56"
-                               title="Belgisch gsm-nummer, bijv. 0470 12 34 56 of +32 470 12 34 56">
-                        <div class="form-text">Belgisch gsm-nummer (bijv. 0470 12 34 56 of +32 470 12 34 56)</div>
-                    </div>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input child-radio" type="radio"
+                                   name="child_select" id="child-new" value="new"
+                                   <?= ($oldChildSel === 'new' || empty($children)) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="child-new">
+                                <i class="bi bi-person-plus me-1"></i><strong>Nieuw kind toevoegen</strong>
+                            </label>
+                        </div>
+                    </fieldset>
 
-                    <div class="mb-3">
-                        <label for="klas_id" class="form-label fw-semibold">Klas <span class="text-danger">*</span></label>
-                        <select class="form-select" id="klas_id" name="klas_id" required>
-                            <option value="">— Kies je klas —</option>
-                            <?php foreach ($classes as $cls): ?>
-                            <option value="<?= (int) $cls['id'] ?>"
-                                    data-grade="<?= (int) (\App\Models\OcClass::gradeFromName((string) $cls['name']) ?? 0) ?>"
-                                    <?= ($oldKlasId === (int) $cls['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($cls['name'], ENT_QUOTES, 'UTF-8') ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <!-- ── New child fields ──────────────────────────────── -->
+                    <div id="newChildFields" class="border rounded p-3 mb-4 bg-light"
+                         <?= ($oldChildSel !== 'new' && !empty($children)) ? 'style="display:none"' : '' ?>>
+                        <p class="fw-semibold mb-3"><i class="bi bi-person-vcard me-1"></i>Gegevens nieuw kind</p>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label for="child_first_name" class="form-label">
+                                    Voornaam <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="child_first_name"
+                                       name="child_first_name"
+                                       value="<?= htmlspecialchars((string) ($pendingChildData['first_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                       placeholder="Voornaam">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="child_last_name" class="form-label">Achternaam</label>
+                                <input type="text" class="form-control" id="child_last_name"
+                                       name="child_last_name"
+                                       value="<?= htmlspecialchars((string) ($pendingChildData['last_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                       placeholder="Achternaam (optioneel)">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label for="child_birthdate" class="form-label">
+                                    Geboortedatum <span class="text-muted">(optioneel)</span>
+                                </label>
+                                <input type="date" class="form-control" id="child_birthdate"
+                                       name="child_birthdate"
+                                       value="<?= htmlspecialchars((string) ($pendingChildData['birthdate'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="klas_id" class="form-label">
+                                    Klas <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="klas_id" name="klas_id">
+                                    <option value="">— Kies klas —</option>
+                                    <?php foreach ($classes as $cls): ?>
+                                    <?php
+                                        $cSelected = (
+                                            (int) ($pendingChildData['klas_id'] ?? 0) === (int) $cls['id'] ||
+                                            ($oldKlasId === (int) $cls['id'] && $oldChildSel === 'new')
+                                        );
+                                    ?>
+                                    <option value="<?= (int) $cls['id'] ?>"
+                                            data-grade="<?= (int) (\App\Models\OcClass::gradeFromName((string) $cls['name']) ?? 0) ?>"
+                                            <?= $cSelected ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cls['name'], ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <?php if (!empty($groups)): ?>
@@ -137,6 +246,17 @@ $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
                     </div>
                     <?php endif; ?>
 
+                    <div class="mb-3">
+                        <label for="telefoon" class="form-label fw-semibold">
+                            Gsm-nummer <span class="text-danger">*</span>
+                        </label>
+                        <input type="tel" class="form-control" id="telefoon" name="telefoon" required
+                               value="<?= htmlspecialchars((string) ($old['telefoon'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                               placeholder="0470 12 34 56"
+                               title="Belgisch gsm-nummer, bijv. 0470 12 34 56 of +32 470 12 34 56">
+                        <div class="form-text">Belgisch gsm-nummer (bijv. 0470 12 34 56 of +32 470 12 34 56)</div>
+                    </div>
+
                     <div class="mb-4">
                         <label for="opmerking" class="form-label">Opmerking <span class="text-muted">(optioneel)</span></label>
                         <textarea class="form-control" id="opmerking" name="opmerking" rows="3"
@@ -153,24 +273,59 @@ $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
                         </a>
                     </div>
                 </form>
+                <?php endif; ?>
 
             </div>
         </div>
     </div>
 </div>
 
-<?php if (!empty($groups)): ?>
 <script>
 (function () {
     'use strict';
 
+    // ── Child selection toggle ────────────────────────────────────────────────
+    var newChildFields = document.getElementById('newChildFields');
+    var childRadios    = document.querySelectorAll('.child-radio');
+
+    function isNewChildSelected() {
+        var r = document.querySelector('input[name="child_select"][value="new"]');
+        return r ? r.checked : false;
+    }
+
+    function updateChildFieldsVisibility() {
+        if (!newChildFields) return;
+        newChildFields.style.display = isNewChildSelected() ? '' : 'none';
+        var fName = document.getElementById('child_first_name');
+        var klas  = document.getElementById('klas_id');
+        if (fName) fName.required = isNewChildSelected();
+        if (klas)  klas.required  = isNewChildSelected();
+    }
+
+    childRadios.forEach(function (r) {
+        r.addEventListener('change', function () {
+            updateChildFieldsVisibility();
+            updateOptions();
+        });
+    });
+    updateChildFieldsVisibility();
+
+    // ── Option group visibility ───────────────────────────────────────────────
     var klasSelect = document.getElementById('klas_id');
-    if (!klasSelect) return;
+
+    function getSelectedGrade() {
+        var checked = document.querySelector('input[name="child_select"]:checked');
+        if (!checked) return 0;
+        if (checked.value === 'new') {
+            if (!klasSelect) return 0;
+            var opt = klasSelect.options[klasSelect.selectedIndex];
+            return opt ? parseInt(opt.getAttribute('data-grade') || '0', 10) : 0;
+        }
+        return parseInt(checked.getAttribute('data-grade') || '0', 10);
+    }
 
     function updateOptions() {
-        var selected = klasSelect.options[klasSelect.selectedIndex];
-        var grade = selected ? parseInt(selected.getAttribute('data-grade') || '0', 10) : 0;
-
+        var grade = getSelectedGrade();
         document.querySelectorAll('.option-group-block').forEach(function (block) {
             var visibleItems = 0;
             block.querySelectorAll('.option-item').forEach(function (item) {
@@ -179,7 +334,6 @@ $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
                 var show = grade >= minG && grade <= maxG;
                 item.style.display = show ? '' : 'none';
                 if (show) visibleItems++;
-                // Uncheck hidden inputs
                 if (!show) {
                     item.querySelectorAll('input').forEach(function (inp) { inp.checked = false; });
                 }
@@ -188,9 +342,26 @@ $oldItemIds   = array_map('intval', (array) ($old['items'] ?? []));
         });
     }
 
-    klasSelect.addEventListener('change', updateOptions);
-    // Run on load (handles back-navigation with pre-filled class)
+    if (klasSelect) {
+        klasSelect.addEventListener('change', updateOptions);
+    }
+
+    // Embed grade data on existing-child radio buttons
+    <?php foreach ($children as $child): ?>
+    <?php
+        $cKlasId  = (int) ($child['klas_id'] ?? 0);
+        $cKlasRow = null;
+        foreach ($classes as $cls) {
+            if ((int) $cls['id'] === $cKlasId) { $cKlasRow = $cls; break; }
+        }
+        $cGrade = ($cKlasRow !== null) ? (\App\Models\OcClass::gradeFromName((string) $cKlasRow['name']) ?? 0) : 0;
+    ?>
+    (function() {
+        var r = document.getElementById('child-<?= (int) $child['id'] ?>');
+        if (r) r.setAttribute('data-grade', '<?= (int) $cGrade ?>');
+    }());
+    <?php endforeach; ?>
+
     updateOptions();
 }());
 </script>
-<?php endif; ?>
