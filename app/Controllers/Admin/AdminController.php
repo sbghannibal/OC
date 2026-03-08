@@ -39,10 +39,10 @@ final class AdminController
             return;
         }
 
-        $password       = (string) ($_POST['password'] ?? '');
-        $adminPassword  = (string) ($this->config['admin']['password'] ?? '');
+        $password      = (string) ($_POST['password'] ?? '');
+        $passwordHash  = (string) ($this->config['admin']['password_hash'] ?? '');
 
-        if ($adminPassword !== '' && hash_equals($adminPassword, $password)) {
+        if ($passwordHash !== '' && password_verify($password, $passwordHash)) {
             $_SESSION['admin_ok'] = true;
             header('Location: ' . $basePath . '/admin');
             exit;

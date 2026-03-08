@@ -49,7 +49,8 @@ final class Router
         }
 
         $uri = '/' . ltrim($uri, '/');
-        // Collapse trailing slash (but keep root /)
+        // Preserve the root path as-is; strip trailing slashes from all other paths
+        // so that e.g. /admin/events/ resolves the same as /admin/events.
         if ($uri !== '/') {
             $uri = rtrim($uri, '/');
         }

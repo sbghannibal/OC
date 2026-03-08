@@ -17,6 +17,19 @@ final class AccessCodeController
 
     public function __construct(private readonly array $config) {}
 
+    private static function clientIp(): string
+    {
+        // Check trusted proxy headers; fall back to REMOTE_ADDR
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            // Take only the first (client) IP from the chain
+            $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
+            }
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+
     public function form(): void
     {
         View::render('public/access_code', ['error' => null, 'rateLimited' => false]);
@@ -34,8 +47,8 @@ final class AccessCodeController
             return;
         }
 
-        $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        $key = 'access_attempt_' . md5($ip);
+        $ip  = self::clientIp();
+        $key = 'access_attempt_' . md5($ip . '_' . session_id());
 
         if (RateLimit::tooManyAttempts($key, self::RATE_LIMIT_MAX, self::RATE_LIMIT_WINDOW)) {
             View::render('public/access_code', [

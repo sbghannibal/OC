@@ -11,7 +11,8 @@ return [
 
     /* Admin dashboard credentials */
     'admin' => [
-        'password' => 'change-me-in-production',
+        // Generate with: php -r "echo password_hash('your-password', PASSWORD_DEFAULT);"
+        'password_hash' => password_hash('change-me-in-production', PASSWORD_DEFAULT),
     ],
 
     /* SQLite database file path (writable location) */

@@ -66,7 +66,7 @@ final class EventController
             $errors[] = 'Naam is verplicht.';
         }
         if ($slug === '' || !preg_match('/^[a-z0-9-]+$/', $slug)) {
-            $errors[] = 'Slug mag alleen kleine letters, cijfers en koppeltekens bevatten.';
+            $errors[] = 'Slug mag alleen kleine letters, cijfers en koppeltekens bevatten en mag niet leeg zijn.';
         }
         if ($accessCode === '') {
             $errors[] = 'Toegangscode is verplicht.';

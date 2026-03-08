@@ -13,7 +13,7 @@ final class Database
         if (self::$instance === null) {
             $dir = dirname($dbPath);
             if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                mkdir($dir, 0750, true);
             }
             self::$instance = new \PDO('sqlite:' . $dbPath, null, null, [
                 \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
