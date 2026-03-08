@@ -68,6 +68,10 @@ $router->post('/events/{slug}/deelnemen', function (array $params) use ($config)
     (new PublicEventController($config))->registerSubmit($params['slug']);
 });
 
+$router->get('/events/{slug}/qr', function (array $params) use ($config): void {
+    (new PublicEventController($config))->qrBypass($params['slug']);
+});
+
 // ── Admin routes ───────────────────────────────────────────────────────────
 $router->get('/admin', function () use ($config): void {
     (new AdminController($config))->dashboard();
@@ -126,6 +130,10 @@ $router->get('/admin/audit-log', function () use ($config): void {
 // ── Registrations routes ───────────────────────────────────────────────────
 $router->get('/admin/inschrijvingen', function () use ($config): void {
     (new RegistrationController($config))->index();
+});
+
+$router->post('/admin/inschrijvingen/{id}', function (array $params) use ($config): void {
+    (new RegistrationController($config))->updatePayment((int) $params['id']);
 });
 
 $router->get('/admin/inschrijvingen.csv', function () use ($config): void {

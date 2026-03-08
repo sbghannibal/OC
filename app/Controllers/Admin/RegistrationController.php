@@ -36,6 +36,57 @@ final class RegistrationController
         ]);
     }
 
+    /** POST /admin/inschrijvingen/{id} – update payment info for a registration */
+    public function updatePayment(int $id): void
+    {
+        $this->requireAuth();
+
+        if (!\App\Core\Csrf::verify()) {
+            http_response_code(400);
+            echo 'Ongeldig formulierverzoek.';
+            return;
+        }
+
+        $basePath = $this->config['base_path'] ?? '';
+        $pdo      = Database::getInstance($this->config['db']);
+
+        $registration = Registration::findById($pdo, $id);
+        if ($registration === null) {
+            http_response_code(404);
+            echo 'Inschrijving niet gevonden.';
+            return;
+        }
+
+        $allowed = ['unknown', 'paid', 'unpaid'];
+        $status  = trim((string) ($_POST['payment_status'] ?? 'unknown'));
+        if (!in_array($status, $allowed, true)) {
+            $status = 'unknown';
+        }
+
+        $paidAt = trim((string) ($_POST['paid_at'] ?? ''));
+        // datetime-local returns "YYYY-MM-DDTHH:MM"; convert to MySQL datetime format
+        if ($paidAt !== '') {
+            $paidAt = str_replace('T', ' ', $paidAt);
+            if (strlen($paidAt) === 16) {
+                $paidAt .= ':00';
+            }
+        } else {
+            $paidAt = null;
+        }
+
+        $note = trim((string) ($_POST['payment_note'] ?? ''));
+        $note = ($note !== '') ? $note : null;
+
+        Registration::updatePayment($pdo, $id, [
+            'payment_status' => $status,
+            'paid_at'        => $paidAt,
+            'payment_note'   => $note,
+        ]);
+
+        header('Location: ' . $basePath . '/admin/inschrijvingen');
+        exit;
+    }
+
     /** GET /admin/inschrijvingen.csv – CSV download for the current event */
     public function exportCsv(): void
     {
@@ -64,7 +115,7 @@ final class RegistrationController
             return;
         }
 
-        fputcsv($out, ['ID', 'Naam', 'E-mail', 'Telefoon', 'Opmerking', 'Aangemeld op'], ';');
+        fputcsv($out, ['ID', 'Naam', 'E-mail', 'Telefoon', 'Opmerking', 'Aangemeld op', 'Betaalstatus', 'Betaald op', 'Betaalopmerking'], ';');
         foreach ($registrations as $r) {
             fputcsv($out, [
                 $r['id'],
@@ -73,6 +124,9 @@ final class RegistrationController
                 $r['telefoon'] ?? '',
                 $r['opmerking'] ?? '',
                 $r['created_at'],
+                $r['payment_status'] ?? 'unknown',
+                $r['paid_at'] ?? '',
+                $r['payment_note'] ?? '',
             ], ';');
         }
         fclose($out);

@@ -54,10 +54,12 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="telefoon" class="form-label">Telefoonnummer <span class="text-muted">(optioneel)</span></label>
-                        <input type="tel" class="form-control" id="telefoon" name="telefoon"
+                        <label for="telefoon" class="form-label fw-semibold">Gsm-nummer <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="telefoon" name="telefoon" required
                                value="<?= htmlspecialchars($old['telefoon'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="+31 6 00000000">
+                               placeholder="0470 12 34 56"
+                               title="Belgisch gsm-nummer, bijv. 0470 12 34 56 of +32 470 12 34 56">
+                        <div class="form-text">Belgisch gsm-nummer (bijv. 0470 12 34 56 of +32 470 12 34 56)</div>
                     </div>
 
                     <div class="mb-4">

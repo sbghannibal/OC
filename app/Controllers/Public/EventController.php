@@ -105,6 +105,11 @@ final class EventController
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Vul een geldig e-mailadres in.';
         }
+        if ($telefoon === '') {
+            $errors[] = 'Telefoonnummer is verplicht.';
+        } elseif (!Registration::validateBelgianMobile($telefoon)) {
+            $errors[] = 'Vul een geldig Belgisch gsm-nummer in (bijv. 0470 12 34 56 of +32 470 12 34 56).';
+        }
 
         if ($errors !== []) {
             View::render('public/events/register', [
@@ -119,12 +124,69 @@ final class EventController
             'event_id' => (int) $event['id'],
             'naam'     => $naam,
             'email'    => $email,
-            'telefoon' => $telefoon !== '' ? $telefoon : null,
+            'telefoon' => $telefoon,
             'opmerking'=> $opmerking !== '' ? $opmerking : null,
         ]);
 
         $_SESSION['registration_success_' . $slug] = true;
         header('Location: ' . $basePath . '/events/' . rawurlencode($slug));
+        exit;
+    }
+
+    /**
+     * GET /events/{slug}/qr?ts=...&sig=...
+     *
+     * One-step QR bypass: validates HMAC signature and expiry, then grants
+     * access to the registration form without entering an access code.
+     */
+    public function qrBypass(string $slug): void
+    {
+        $basePath   = $this->config['base_path'] ?? '';
+        $signingKey = $this->config['signing_key'] ?? '';
+
+        $ts  = trim((string) ($_GET['ts']  ?? ''));
+        $sig = trim((string) ($_GET['sig'] ?? ''));
+
+        $deelnemenUrl = $basePath . '/events/' . rawurlencode($slug) . '/deelnemen';
+
+        // All validation failures use the same 403 response to avoid leaking
+        // information about which step failed (signing key presence, expiry, signature).
+        $deny = static function (): void {
+            http_response_code(403);
+            View::render('errors/404', []);
+        };
+
+        if ($ts === '' || $sig === '' || $signingKey === '') {
+            $deny();
+            return;
+        }
+
+        // Enforce 7-day expiry window
+        $timestamp = (int) $ts;
+        if ($timestamp <= 0 || abs(time() - $timestamp) > 7 * 86400) {
+            $deny();
+            return;
+        }
+
+        // Verify HMAC signature (always compute expected to avoid timing issues)
+        $expected = hash_hmac('sha256', $slug . '.' . $ts, $signingKey);
+        if (!hash_equals($expected, $sig)) {
+            $deny();
+            return;
+        }
+
+        // Verify the event exists
+        $pdo   = Database::getInstance($this->config['db']);
+        $event = Event::findBySlug($pdo, $slug);
+        if ($event === null) {
+            http_response_code(404);
+            View::render('errors/404', []);
+            return;
+        }
+
+        // Grant access and redirect to registration form
+        $_SESSION['access_ok_' . $slug] = true;
+        header('Location: ' . $deelnemenUrl);
         exit;
     }
 }

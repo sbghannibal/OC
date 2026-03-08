@@ -69,14 +69,38 @@ final class Database
 
         // Registrations – participants who signed up for an event
         $pdo->exec("CREATE TABLE IF NOT EXISTS registrations (
-            id         INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            event_id   INT          NOT NULL,
-            naam       VARCHAR(255) NOT NULL,
-            email      VARCHAR(255) NOT NULL,
-            telefoon   VARCHAR(50)  DEFAULT NULL,
-            opmerking  TEXT         DEFAULT NULL,
-            created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            id              INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            event_id        INT          NOT NULL,
+            naam            VARCHAR(255) NOT NULL,
+            email           VARCHAR(255) NOT NULL,
+            telefoon        VARCHAR(50)  DEFAULT NULL,
+            opmerking       TEXT         DEFAULT NULL,
+            payment_status  ENUM('unknown','paid','unpaid') NOT NULL DEFAULT 'unknown',
+            paid_at         DATETIME     DEFAULT NULL,
+            payment_note    TEXT         DEFAULT NULL,
+            created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_reg_event (event_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Add payment columns to existing registrations tables (idempotent migration)
+        self::addColumnIfMissing($pdo, 'registrations', 'payment_status',
+            "ALTER TABLE registrations ADD COLUMN payment_status ENUM('unknown','paid','unpaid') NOT NULL DEFAULT 'unknown'");
+        self::addColumnIfMissing($pdo, 'registrations', 'paid_at',
+            "ALTER TABLE registrations ADD COLUMN paid_at DATETIME DEFAULT NULL");
+        self::addColumnIfMissing($pdo, 'registrations', 'payment_note',
+            "ALTER TABLE registrations ADD COLUMN payment_note TEXT DEFAULT NULL");
+    }
+
+    /** Add a column only when it does not yet exist (idempotent ALTER TABLE helper). */
+    private static function addColumnIfMissing(\PDO $pdo, string $table, string $column, string $alterSql): void
+    {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.columns
+             WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column"
+        );
+        $stmt->execute([':table' => $table, ':column' => $column]);
+        if ((int) $stmt->fetchColumn() === 0) {
+            $pdo->exec($alterSql);
+        }
     }
 }
