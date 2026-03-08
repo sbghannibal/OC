@@ -15,7 +15,7 @@ final class HomeController
     public function index(): void
     {
         $basePath = $this->config['base_path'] ?? '';
-        $pdo      = Database::getInstance($this->config['db_path']);
+        $pdo      = Database::getInstance($this->config['db']);
         $event    = Event::findCurrent($pdo);
 
         if ($event === null) {

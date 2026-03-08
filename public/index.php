@@ -9,6 +9,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// Load environment variables from .env at the repository root (outside public/)
+\App\Core\Env::load(__DIR__ . '/../.env');
+
 $configFile = __DIR__ . '/../config/config.php';
 if (!is_file($configFile)) {
     http_response_code(500);
@@ -17,7 +20,9 @@ if (!is_file($configFile)) {
 $config = require $configFile;
 
 use App\Controllers\Admin\AdminController;
+use App\Controllers\Admin\AuditLogController;
 use App\Controllers\Admin\EventController;
+use App\Controllers\Admin\UserController;
 use App\Controllers\Public\AccessCodeController;
 use App\Controllers\Public\HomeController;
 use App\Core\App;
@@ -75,6 +80,28 @@ $router->post('/admin/events', function () use ($config): void {
 
 $router->post('/admin/events/current', function () use ($config): void {
     (new EventController($config))->setCurrent();
+});
+
+// ── User management routes ─────────────────────────────────────────────────
+$router->get('/admin/users', function () use ($config): void {
+    (new UserController($config))->index();
+});
+
+$router->get('/admin/users/new', function () use ($config): void {
+    (new UserController($config))->create();
+});
+
+$router->post('/admin/users', function () use ($config): void {
+    (new UserController($config))->store();
+});
+
+$router->post('/admin/users/delete', function () use ($config): void {
+    (new UserController($config))->destroy();
+});
+
+// ── Audit log route ────────────────────────────────────────────────────────
+$router->get('/admin/audit-log', function () use ($config): void {
+    (new AuditLogController($config))->index();
 });
 
 $app = new App($router);

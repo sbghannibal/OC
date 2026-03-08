@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\View;
+use App\Models\AuditLog;
 use App\Models\Event;
 
 final class EventController
@@ -25,7 +26,7 @@ final class EventController
     public function index(): void
     {
         $this->requireAuth();
-        $pdo    = Database::getInstance($this->config['db_path']);
+        $pdo    = Database::getInstance($this->config['db']);
         $events = Event::all($pdo);
         View::render('admin/events/index', ['events' => $events]);
     }
@@ -80,7 +81,7 @@ final class EventController
             return;
         }
 
-        $pdo = Database::getInstance($this->config['db_path']);
+        $pdo = Database::getInstance($this->config['db']);
 
         if (Event::slugExists($pdo, $slug)) {
             View::render('admin/events/create', [
@@ -90,13 +91,22 @@ final class EventController
             return;
         }
 
-        Event::create($pdo, [
+        $id = Event::create($pdo, [
             'name'        => $name,
             'slug'        => $slug,
             'access_code' => $accessCode,
             'starts_at'   => $startsAt,
             'ends_at'     => $endsAt,
         ]);
+
+        AuditLog::record(
+            $pdo,
+            (int) ($_SESSION['admin_user_id'] ?? 0),
+            (string) ($_SESSION['admin_username'] ?? ''),
+            'event.create',
+            "id={$id} name={$name} slug={$slug}",
+            $_SERVER['REMOTE_ADDR'] ?? null
+        );
 
         header('Location: ' . $basePath . '/admin/events');
         exit;
@@ -114,8 +124,17 @@ final class EventController
 
         $id = (int) ($_POST['event_id'] ?? 0);
         if ($id > 0) {
-            $pdo = Database::getInstance($this->config['db_path']);
+            $pdo = Database::getInstance($this->config['db']);
             Event::setCurrent($pdo, $id);
+
+            AuditLog::record(
+                $pdo,
+                (int) ($_SESSION['admin_user_id'] ?? 0),
+                (string) ($_SESSION['admin_username'] ?? ''),
+                'event.set_current',
+                "id={$id}",
+                $_SERVER['REMOTE_ADDR'] ?? null
+            );
         }
 
         header('Location: ' . $basePath . '/admin/events');
