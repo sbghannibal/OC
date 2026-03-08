@@ -42,13 +42,13 @@ final class EventOptionItem
     }
 
     /**
-     * @param array{group_id: int, name: string, min_grade: int, max_grade: int, sort_order?: int} $data
+     * @param array{group_id: int, name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float} $data
      */
     public static function create(\PDO $pdo, array $data): int
     {
         $stmt = $pdo->prepare(
-            "INSERT INTO event_option_items (group_id, name, min_grade, max_grade, sort_order)
-             VALUES (:group_id, :name, :min_grade, :max_grade, :sort_order)"
+            "INSERT INTO event_option_items (group_id, name, min_grade, max_grade, sort_order, price)
+             VALUES (:group_id, :name, :min_grade, :max_grade, :sort_order, :price)"
         );
         $stmt->execute([
             ':group_id'  => $data['group_id'],
@@ -56,18 +56,20 @@ final class EventOptionItem
             ':min_grade' => $data['min_grade'],
             ':max_grade' => $data['max_grade'],
             ':sort_order'=> $data['sort_order'] ?? 0,
+            ':price'     => $data['price'] ?? 0.00,
         ]);
         return (int) $pdo->lastInsertId();
     }
 
     /**
-     * @param array{name: string, min_grade: int, max_grade: int, sort_order?: int} $data
+     * @param array{name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float} $data
      */
     public static function update(\PDO $pdo, int $id, array $data): void
     {
         $stmt = $pdo->prepare(
             "UPDATE event_option_items
-             SET name = :name, min_grade = :min_grade, max_grade = :max_grade, sort_order = :sort_order
+             SET name = :name, min_grade = :min_grade, max_grade = :max_grade,
+                 sort_order = :sort_order, price = :price
              WHERE id = :id"
         );
         $stmt->execute([
@@ -75,6 +77,7 @@ final class EventOptionItem
             ':min_grade' => $data['min_grade'],
             ':max_grade' => $data['max_grade'],
             ':sort_order'=> $data['sort_order'] ?? 0,
+            ':price'     => $data['price'] ?? 0.00,
             ':id'        => $id,
         ]);
     }
@@ -104,14 +107,14 @@ final class EventOptionItem
     }
 
     /**
-     * Return items with their group name for a registration (for display).
+     * Return items with their group name and price for a registration (for display).
      *
      * @return list<array<string,mixed>>
      */
     public static function findChosenForRegistration(\PDO $pdo, int $registrationId): array
     {
         $stmt = $pdo->prepare(
-            "SELECT i.name AS item_name, g.name AS group_name
+            "SELECT i.name AS item_name, g.name AS group_name, i.price
              FROM registration_option_items roi
              JOIN event_option_items i ON i.id = roi.item_id
              JOIN event_option_groups g ON g.id = i.group_id

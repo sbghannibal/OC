@@ -110,6 +110,7 @@ $slug = $event['slug'];
             <thead class="table-light">
                 <tr>
                     <th>Naam</th>
+                    <th>Prijs (€)</th>
                     <th>Min klas</th>
                     <th>Max klas</th>
                     <th>Volgorde</th>
@@ -120,6 +121,7 @@ $slug = $event['slug'];
             <?php foreach ($group['items'] as $item): ?>
                 <tr>
                     <td><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= number_format((float) ($item['price'] ?? 0), 2, ',', '.') ?></td>
                     <td><?= (int) $item['min_grade'] ?></td>
                     <td><?= (int) $item['max_grade'] ?></td>
                     <td><?= (int) $item['sort_order'] ?></td>
@@ -144,15 +146,19 @@ $slug = $event['slug'];
               action="<?= htmlspecialchars($basePath . '/admin/events/' . rawurlencode($slug) . '/opties/' . $gid . '/items', ENT_QUOTES, 'UTF-8') ?>">
             <?= \App\Core\Csrf::field() ?>
             <div class="row g-2 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-semibold">Nieuw item</label>
                     <input type="text" name="name" class="form-control" placeholder="Naam" required>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label fw-semibold">Prijs (€)</label>
+                    <input type="number" name="price" class="form-control" min="0" step="0.01" value="0.00">
+                </div>
+                <div class="col-md-1">
                     <label class="form-label fw-semibold">Min klas (1-6)</label>
                     <input type="number" name="min_grade" class="form-control" min="1" max="6" value="1">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label class="form-label fw-semibold">Max klas (1-6)</label>
                     <input type="number" name="max_grade" class="form-control" min="1" max="6" value="6">
                 </div>
@@ -160,7 +166,7 @@ $slug = $event['slug'];
                     <label class="form-label fw-semibold">Volgorde</label>
                     <input type="number" name="sort_order" class="form-control" value="0">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <button type="submit" class="btn btn-success w-100">
                         <i class="bi bi-plus-lg me-1"></i>Toevoegen
                     </button>

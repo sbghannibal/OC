@@ -166,6 +166,18 @@ final class Database
             "ALTER TABLE registrations ADD COLUMN parent_id INT DEFAULT NULL");
         self::addColumnIfMissing($pdo, 'registrations', 'child_id',
             "ALTER TABLE registrations ADD COLUMN child_id INT DEFAULT NULL");
+
+        // Soft-cancel support for registrations
+        self::addColumnIfMissing($pdo, 'registrations', 'cancelled_at',
+            "ALTER TABLE registrations ADD COLUMN cancelled_at DATETIME DEFAULT NULL");
+
+        // Price per option item (in euros, default 0.00)
+        self::addColumnIfMissing($pdo, 'event_option_items', 'price',
+            "ALTER TABLE event_option_items ADD COLUMN price DECIMAL(8,2) NOT NULL DEFAULT 0.00");
+
+        // Unique index on (event_id, child_id) – NULL child_id rows are exempt (MySQL semantics)
+        self::addIndexIfMissing($pdo, 'registrations', 'uniq_reg_event_child',
+            "ALTER TABLE registrations ADD UNIQUE INDEX uniq_reg_event_child (event_id, child_id)");
     }
 
     /** Seed the default 12 school classes if the classes table is empty. */
@@ -192,6 +204,24 @@ final class Database
         $stmt->execute([':table' => $table, ':column' => $column]);
         if ((int) $stmt->fetchColumn() === 0) {
             $pdo->exec($alterSql);
+        }
+    }
+
+    /** Add an index only when it does not yet exist (idempotent ALTER TABLE helper). */
+    private static function addIndexIfMissing(\PDO $pdo, string $table, string $indexName, string $alterSql): void
+    {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.statistics
+             WHERE table_schema = DATABASE() AND table_name = :table AND index_name = :index"
+        );
+        $stmt->execute([':table' => $table, ':index' => $indexName]);
+        if ((int) $stmt->fetchColumn() === 0) {
+            try {
+                $pdo->exec($alterSql);
+            } catch (\PDOException) {
+                // Ignore duplicate-entry errors (existing data prevents unique index creation).
+                // Any other causes (permissions, syntax) will surface on next migration run.
+            }
         }
     }
 }

@@ -188,6 +188,7 @@ final class EventOptionsController
         $minGrade  = max(1, min(6, (int) ($_POST['min_grade'] ?? 1)));
         $maxGrade  = max(1, min(6, (int) ($_POST['max_grade'] ?? 6)));
         $sortOrder = (int) ($_POST['sort_order'] ?? 0);
+        $price     = max(0.0, (float) str_replace(',', '.', (string) ($_POST['price'] ?? '0')));
 
         if ($name !== '') {
             EventOptionItem::create($pdo, [
@@ -196,6 +197,7 @@ final class EventOptionsController
                 'min_grade'  => $minGrade,
                 'max_grade'  => max($minGrade, $maxGrade),
                 'sort_order' => $sortOrder,
+                'price'      => $price,
             ]);
         }
 

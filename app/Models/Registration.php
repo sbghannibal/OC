@@ -40,6 +40,86 @@ final class Registration
         return ($row !== false) ? $row : null;
     }
 
+    /**
+     * Find a registration by child + event combination.
+     * Returns any registration (including cancelled ones) so callers can upsert.
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function findByChildAndEvent(\PDO $pdo, int $childId, int $eventId): ?array
+    {
+        $stmt = $pdo->prepare(
+            "SELECT * FROM registrations WHERE child_id = :child_id AND event_id = :event_id LIMIT 1"
+        );
+        $stmt->execute([':child_id' => $childId, ':event_id' => $eventId]);
+        $row = $stmt->fetch();
+        return ($row !== false) ? $row : null;
+    }
+
+    /**
+     * Find all active (non-cancelled) registrations for a parent for a given event.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function findByParentAndEvent(\PDO $pdo, int $parentId, int $eventId): array
+    {
+        $stmt = $pdo->prepare(
+            "SELECT * FROM registrations
+             WHERE parent_id = :parent_id AND event_id = :event_id AND cancelled_at IS NULL
+             ORDER BY created_at ASC"
+        );
+        $stmt->execute([':parent_id' => $parentId, ':event_id' => $eventId]);
+        return $stmt->fetchAll() ?: [];
+    }
+
+    /**
+     * Find a registration by ID, verifying it belongs to the given parent.
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function findByIdAndParent(\PDO $pdo, int $id, int $parentId): ?array
+    {
+        $stmt = $pdo->prepare(
+            "SELECT * FROM registrations WHERE id = :id AND parent_id = :parent_id LIMIT 1"
+        );
+        $stmt->execute([':id' => $id, ':parent_id' => $parentId]);
+        $row = $stmt->fetch();
+        return ($row !== false) ? $row : null;
+    }
+
+    /**
+     * Soft-cancel a registration by setting cancelled_at to now.
+     */
+    public static function cancel(\PDO $pdo, int $id): void
+    {
+        $stmt = $pdo->prepare(
+            "UPDATE registrations SET cancelled_at = NOW() WHERE id = :id"
+        );
+        $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Update mutable fields of a registration (re-activate if previously cancelled).
+     *
+     * @param array{naam: string, email: string, telefoon: string, opmerking?: string|null} $data
+     */
+    public static function updateRegistration(\PDO $pdo, int $id, array $data): void
+    {
+        $stmt = $pdo->prepare(
+            "UPDATE registrations
+             SET naam = :naam, email = :email, telefoon = :telefoon,
+                 opmerking = :opmerking, cancelled_at = NULL
+             WHERE id = :id"
+        );
+        $stmt->execute([
+            ':naam'      => $data['naam'],
+            ':email'     => $data['email'],
+            ':telefoon'  => $data['telefoon'],
+            ':opmerking' => $data['opmerking'] ?? null,
+            ':id'        => $id,
+        ]);
+    }
+
     /** @return list<array<string,mixed>> */
     public static function findByEvent(\PDO $pdo, int $eventId): array
     {

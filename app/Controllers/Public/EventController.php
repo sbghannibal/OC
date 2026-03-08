@@ -75,14 +75,38 @@ final class EventController
         }
         unset($group);
 
+        // Pre-fill form if ?kind=<child_id> is provided (edit flow)
+        $prefillChildId  = (int) ($_GET['kind'] ?? 0);
+        $existingReg     = null;
+        $prefillItemIds  = [];
+        $old             = [];
+
+        if ($prefillChildId > 0) {
+            $childRow = Child::findByIdAndParent($pdo, $prefillChildId, $parentId);
+            if ($childRow !== null) {
+                $existingReg = Registration::findByChildAndEvent($pdo, $prefillChildId, (int) $event['id']);
+                if ($existingReg !== null && $existingReg['cancelled_at'] === null) {
+                    $prefillItemIds = EventOptionItem::findIdsByRegistration($pdo, (int) $existingReg['id']);
+                    $old = [
+                        'telefoon'     => $existingReg['telefoon'] ?? '',
+                        'opmerking'    => $existingReg['opmerking'] ?? '',
+                        'child_select' => 'existing_' . $prefillChildId,
+                        'items'        => $prefillItemIds,
+                    ];
+                } else {
+                    $old = ['child_select' => 'existing_' . $prefillChildId];
+                }
+            }
+        }
+
         View::render('public/events/register', [
-            'event'    => $event,
-            'classes'  => $classes,
-            'groups'   => $groups,
-            'children' => $children,
-            'errors'   => [],
-            'old'      => [],
-            'duplicateChild'  => null,
+            'event'            => $event,
+            'classes'          => $classes,
+            'groups'           => $groups,
+            'children'         => $children,
+            'errors'           => [],
+            'old'              => $old,
+            'duplicateChild'   => null,
             'pendingChildData' => [],
         ]);
     }
@@ -326,22 +350,135 @@ final class EventController
             }
         }
 
-        $regId = Registration::create($pdo, [
-            'event_id'  => (int) $event['id'],
-            'naam'      => $naam,
-            'email'     => $parentEmail,
-            'telefoon'  => $telefoon,
-            'klas_id'   => $klasId > 0 ? $klasId : null,
-            'klas_name' => $klasRow !== null ? (string) $klasRow['name'] : null,
-            'opmerking' => $opmerking !== '' ? $opmerking : null,
-            'parent_id' => $parentId,
-            'child_id'  => $childRow !== null ? (int) $childRow['id'] : null,
-        ]);
+        // ── Upsert: update existing registration or create new ───────────────
+        $existingReg = ($childRow !== null)
+            ? Registration::findByChildAndEvent($pdo, (int) $childRow['id'], (int) $event['id'])
+            : null;
+
+        if ($existingReg !== null) {
+            $regId = (int) $existingReg['id'];
+            Registration::updateRegistration($pdo, $regId, [
+                'naam'      => $naam,
+                'email'     => $parentEmail,
+                'telefoon'  => $telefoon,
+                'opmerking' => $opmerking !== '' ? $opmerking : null,
+            ]);
+        } else {
+            $regId = Registration::create($pdo, [
+                'event_id'  => (int) $event['id'],
+                'naam'      => $naam,
+                'email'     => $parentEmail,
+                'telefoon'  => $telefoon,
+                'klas_id'   => $klasId > 0 ? $klasId : null,
+                'klas_name' => $klasRow !== null ? (string) $klasRow['name'] : null,
+                'opmerking' => $opmerking !== '' ? $opmerking : null,
+                'parent_id' => $parentId,
+                'child_id'  => $childRow !== null ? (int) $childRow['id'] : null,
+            ]);
+        }
 
         EventOptionItem::setForRegistration($pdo, $regId, $chosenItemIds);
 
-        $_SESSION['registration_success_' . $slug] = true;
-        header('Location: ' . $basePath . '/events/' . rawurlencode($slug));
+        if (!empty($_SESSION['parent_ok'])) {
+            header('Location: ' . $basePath . '/events/' . rawurlencode($slug) . '/overzicht');
+        } else {
+            $_SESSION['registration_success_' . $slug] = true;
+            header('Location: ' . $basePath . '/events/' . rawurlencode($slug));
+        }
+        exit;
+    }
+
+    /**
+     * GET /events/{slug}/overzicht – parent overview of their registrations for the event
+     */
+    public function overview(string $slug): void
+    {
+        $basePath = $this->config['base_path'] ?? '';
+        $pdo      = Database::getInstance($this->config['db']);
+        $event    = Event::findBySlug($pdo, $slug);
+
+        if ($event === null) {
+            http_response_code(404);
+            View::render('errors/404', []);
+            return;
+        }
+
+        if (empty($_SESSION['parent_ok'])) {
+            $return = $basePath . '/events/' . rawurlencode($slug) . '/overzicht';
+            header('Location: ' . $basePath . '/ouder/login?return=' . rawurlencode($return));
+            exit;
+        }
+
+        $parentId     = (int) $_SESSION['parent_id'];
+        $registrations = Registration::findByParentAndEvent($pdo, $parentId, (int) $event['id']);
+        $isOpen       = Event::isRegistrationOpen($event);
+
+        // Load child info and chosen options per registration
+        $regRows = [];
+        $eventTotal = 0.0;
+        foreach ($registrations as $reg) {
+            $childId  = (int) ($reg['child_id'] ?? 0);
+            $child    = $childId > 0 ? Child::findByIdAndParent($pdo, $childId, $parentId) : null;
+            $options  = EventOptionItem::findChosenForRegistration($pdo, (int) $reg['id']);
+            $subtotal = (float) array_sum(array_map('floatval', array_column($options, 'price')));
+            $eventTotal += $subtotal;
+            $regRows[] = [
+                'registration' => $reg,
+                'child'        => $child,
+                'options'      => $options,
+                'subtotal'     => $subtotal,
+            ];
+        }
+
+        View::render('public/events/overview', [
+            'event'      => $event,
+            'regRows'    => $regRows,
+            'eventTotal' => $eventTotal,
+            'isOpen'     => $isOpen,
+        ]);
+    }
+
+    /**
+     * POST /events/{slug}/afmelden – soft-cancel a child's registration
+     */
+    public function afmelden(string $slug): void
+    {
+        $basePath = $this->config['base_path'] ?? '';
+        $pdo      = Database::getInstance($this->config['db']);
+        $event    = Event::findBySlug($pdo, $slug);
+
+        if ($event === null) {
+            http_response_code(404);
+            View::render('errors/404', []);
+            return;
+        }
+
+        if (empty($_SESSION['parent_ok'])) {
+            header('Location: ' . $basePath . '/ouder/login');
+            exit;
+        }
+
+        if (!Csrf::verify()) {
+            header('Location: ' . $basePath . '/events/' . rawurlencode($slug) . '/overzicht');
+            exit;
+        }
+
+        if (!Event::isRegistrationOpen($event)) {
+            header('Location: ' . $basePath . '/events/' . rawurlencode($slug) . '/overzicht');
+            exit;
+        }
+
+        $parentId = (int) $_SESSION['parent_id'];
+        $regId    = (int) ($_POST['registration_id'] ?? 0);
+
+        if ($regId > 0) {
+            $reg = Registration::findByIdAndParent($pdo, $regId, $parentId);
+            if ($reg !== null) {
+                Registration::cancel($pdo, $regId);
+            }
+        }
+
+        header('Location: ' . $basePath . '/events/' . rawurlencode($slug) . '/overzicht');
         exit;
     }
 
