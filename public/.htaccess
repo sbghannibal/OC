@@ -1,0 +1,11 @@
+Options -Indexes
+
+RewriteEngine On
+RewriteBase /OC/public/
+
+# Bypass rewrite for existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through the front controller
+RewriteRule ^ index.php [L]
