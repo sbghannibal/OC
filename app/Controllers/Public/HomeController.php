@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controllers\Public;
 
+use App\Core\Database;
 use App\Core\View;
+use App\Models\Event;
 
 final class HomeController
 {
@@ -12,12 +14,23 @@ final class HomeController
 
     public function index(): void
     {
-        if (empty($_SESSION['access_ok'])) {
-            header('Location: /toegang');
+        $basePath = $this->config['base_path'] ?? '';
+        $pdo      = Database::getInstance($this->config['db_path']);
+        $event    = Event::findCurrent($pdo);
+
+        if ($event === null) {
+            // No event configured yet
+            View::render('public/home', ['event' => null]);
+            return;
+        }
+
+        // Check if user has been authorized for this specific event
+        $sessionKey = 'access_ok_' . $event['slug'];
+        if (empty($_SESSION[$sessionKey])) {
+            header('Location: ' . $basePath . '/toegang');
             exit;
         }
 
-        $groupLabel = (string) ($this->config['access']['default_group_label'] ?? '');
-        View::render('public/home', ['groupLabel' => $groupLabel]);
+        View::render('public/home', ['event' => $event]);
     }
 }
