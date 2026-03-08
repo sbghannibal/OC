@@ -138,6 +138,34 @@ final class Database
             PRIMARY KEY (registration_id, item_id),
             INDEX idx_roi_item (item_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Parents – public parent accounts (email + password)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS parents (
+            id            INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            email         VARCHAR(255) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Children – child profiles linked to a parent account
+        $pdo->exec("CREATE TABLE IF NOT EXISTS children (
+            id         INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            parent_id  INT          NOT NULL,
+            first_name VARCHAR(100) NOT NULL,
+            last_name  VARCHAR(100) DEFAULT NULL,
+            birthdate  DATE         DEFAULT NULL,
+            klas_id    INT          DEFAULT NULL,
+            klas_name  VARCHAR(20)  DEFAULT NULL,
+            created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_children_parent (parent_id),
+            CONSTRAINT fk_children_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Add parent_id and child_id to registrations (idempotent)
+        self::addColumnIfMissing($pdo, 'registrations', 'parent_id',
+            "ALTER TABLE registrations ADD COLUMN parent_id INT DEFAULT NULL");
+        self::addColumnIfMissing($pdo, 'registrations', 'child_id',
+            "ALTER TABLE registrations ADD COLUMN child_id INT DEFAULT NULL");
     }
 
     /** Seed the default 12 school classes if the classes table is empty. */

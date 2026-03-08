@@ -29,6 +29,7 @@ use App\Controllers\Admin\UserController;
 use App\Controllers\Public\AccessCodeController;
 use App\Controllers\Public\EventController as PublicEventController;
 use App\Controllers\Public\HomeController;
+use App\Controllers\Public\ParentAuthController;
 use App\Core\App;
 use App\Core\Router;
 use App\Core\View;
@@ -72,6 +73,27 @@ $router->post('/events/{slug}/deelnemen', function (array $params) use ($config)
 
 $router->get('/events/{slug}/qr', function (array $params) use ($config): void {
     (new PublicEventController($config))->qrBypass($params['slug']);
+});
+
+// ── Parent auth routes ─────────────────────────────────────────────────────
+$router->get('/ouder/registreren', function () use ($config): void {
+    (new ParentAuthController($config))->registerForm();
+});
+
+$router->post('/ouder/registreren', function () use ($config): void {
+    (new ParentAuthController($config))->registerSubmit();
+});
+
+$router->get('/ouder/login', function () use ($config): void {
+    (new ParentAuthController($config))->loginForm();
+});
+
+$router->post('/ouder/login', function () use ($config): void {
+    (new ParentAuthController($config))->loginSubmit();
+});
+
+$router->post('/ouder/logout', function () use ($config): void {
+    (new ParentAuthController($config))->logout();
 });
 
 // ── Admin routes ───────────────────────────────────────────────────────────

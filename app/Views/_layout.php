@@ -29,11 +29,29 @@
                         </a>
                     </li>
                 </ul>
-                <div class="mt-2 mt-lg-0">
-                    <a href="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>"
-                       class="btn btn-light btn-sm fw-semibold px-3">
-                        <i class="bi bi-box-arrow-in-right me-1"></i>Toegangscode
+                <div class="mt-2 mt-lg-0 d-flex flex-wrap gap-2 align-items-center">
+                    <?php if (!empty($_SESSION['parent_ok'])): ?>
+                    <span class="text-white-50 small">
+                        <i class="bi bi-person-check me-1"></i><?= htmlspecialchars((string) ($_SESSION['parent_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                    <form method="post"
+                          action="<?= htmlspecialchars($basePath . '/ouder/logout', ENT_QUOTES, 'UTF-8') ?>"
+                          class="d-inline">
+                        <?= \App\Core\Csrf::field() ?>
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold px-3">
+                            <i class="bi bi-box-arrow-right me-1"></i>Uitloggen
+                        </button>
+                    </form>
+                    <?php else: ?>
+                    <a href="<?= htmlspecialchars($basePath . '/ouder/login', ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-outline-light btn-sm fw-semibold px-3">
+                        <i class="bi bi-person me-1"></i>Ouder login
                     </a>
+                    <a href="<?= htmlspecialchars($basePath . '/ouder/registreren', ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-light btn-sm fw-semibold px-3">
+                        <i class="bi bi-person-plus me-1"></i>Registreren
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
