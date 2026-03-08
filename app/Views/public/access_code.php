@@ -15,7 +15,7 @@
         </div>
         <?php if (!$rateLimited): ?>
         <div class="card-body">
-            <form method="post" action="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>">
+            <form method="post" action="<?= htmlspecialchars($basePath . '/toegang' . ($next !== '' ? '?next=' . urlencode($next) : ''), ENT_QUOTES, 'UTF-8') ?>">
                 <?= \App\Core\Csrf::field() ?>
                 <div class="mb-3">
                     <label for="code" class="form-label">Toegangscode</label>

@@ -28,4 +28,10 @@ return [
         'iban'             => $env('SEPA_IBAN'),
         'bic'              => $env('SEPA_BIC'),
     ],
+
+    /*
+     * Signing key for HMAC-signed QR registration links.
+     * Set APP_SIGNING_KEY in your .env file (minimum 32 random characters).
+     */
+    'signing_key' => $env('APP_SIGNING_KEY'),
 ];

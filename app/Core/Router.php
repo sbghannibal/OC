@@ -9,6 +9,9 @@ final class Router
     /** @var array<string, array<string, callable>> */
     private array $routes = [];
 
+    /** @var list<array{method: string, pattern: string, names: list<string>, handler: callable}> */
+    private array $paramRoutes = [];
+
     private string $basePath;
 
     public function __construct(string $basePath = '')
@@ -29,12 +32,41 @@ final class Router
 
     public function get(string $path, callable $handler): void
     {
-        $this->routes['GET'][$path] = $handler;
+        if (str_contains($path, '{')) {
+            $this->addParamRoute('GET', $path, $handler);
+        } else {
+            $this->routes['GET'][$path] = $handler;
+        }
     }
 
     public function post(string $path, callable $handler): void
     {
-        $this->routes['POST'][$path] = $handler;
+        if (str_contains($path, '{')) {
+            $this->addParamRoute('POST', $path, $handler);
+        } else {
+            $this->routes['POST'][$path] = $handler;
+        }
+    }
+
+    /** Convert a path pattern like /events/{slug}/deelnemen to a regex + param names. */
+    private function addParamRoute(string $method, string $path, callable $handler): void
+    {
+        $names   = [];
+        $pattern = preg_replace_callback(
+            '/\{([^}]+)\}/',
+            static function (array $m) use (&$names): string {
+                $names[] = $m[1];
+                return '([^/]+)';
+            },
+            $path
+        ) ?? $path;
+
+        $this->paramRoutes[] = [
+            'method'  => $method,
+            'pattern' => '#^' . $pattern . '$#u',
+            'names'   => $names,
+            'handler' => $handler,
+        ];
     }
 
     public function dispatch(): void
@@ -77,6 +109,37 @@ final class Router
 
         if (isset($this->routes[$method][$uri])) {
             ($this->routes[$method][$uri])();
+            return;
+        }
+
+        // Try parameterized routes
+        $patternMethodMismatch = false;
+        foreach ($this->paramRoutes as $route) {
+            if (!preg_match($route['pattern'], $uri, $matches)) {
+                continue;
+            }
+            // URI pattern matched – check HTTP method
+            if ($route['method'] !== $method) {
+                $patternMethodMismatch = true;
+                continue;
+            }
+            array_shift($matches); // remove the full-match capture
+            if (count($matches) !== count($route['names'])) {
+                continue; // safety: param count mismatch (should never happen with a correct pattern)
+            }
+            $params = (array) array_combine($route['names'], $matches);
+            ($route['handler'])($params);
+            return;
+        }
+
+        if ($patternMethodMismatch) {
+            http_response_code(405);
+            $errorFile = __DIR__ . '/../../app/Views/errors/405.php';
+            if (is_file($errorFile)) {
+                include $errorFile;
+            } else {
+                echo '<h1>405 – Methode niet toegestaan</h1>';
+            }
             return;
         }
 

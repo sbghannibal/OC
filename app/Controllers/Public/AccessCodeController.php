@@ -32,17 +32,20 @@ final class AccessCodeController
 
     public function form(): void
     {
-        View::render('public/access_code', ['error' => null, 'rateLimited' => false]);
+        $next = (string) ($_GET['next'] ?? '');
+        View::render('public/access_code', ['error' => null, 'rateLimited' => false, 'next' => $next]);
     }
 
     public function submit(): void
     {
         $basePath = $this->config['base_path'] ?? '';
+        $next     = (string) ($_GET['next'] ?? '');
 
         if (!Csrf::verify()) {
             View::render('public/access_code', [
                 'error'       => 'Ongeldig formulierverzoek. Probeer opnieuw.',
                 'rateLimited' => false,
+                'next'        => $next,
             ]);
             return;
         }
@@ -54,6 +57,7 @@ final class AccessCodeController
             View::render('public/access_code', [
                 'error'       => null,
                 'rateLimited' => true,
+                'next'        => $next,
             ]);
             return;
         }
@@ -65,6 +69,7 @@ final class AccessCodeController
             View::render('public/access_code', [
                 'error'       => 'Er is momenteel geen actief evenement.',
                 'rateLimited' => false,
+                'next'        => $next,
             ]);
             return;
         }
@@ -74,7 +79,13 @@ final class AccessCodeController
         if (hash_equals($event['access_code'], $code)) {
             RateLimit::reset($key);
             $_SESSION['access_ok_' . $event['slug']] = true;
-            header('Location: ' . $basePath . '/');
+
+            // If a ?next= param was set by the registration form redirect, go there instead
+            if ($next !== '' && str_starts_with($next, $basePath . '/events/')) {
+                header('Location: ' . $next);
+            } else {
+                header('Location: ' . $basePath . '/');
+            }
             exit;
         }
 
@@ -82,6 +93,7 @@ final class AccessCodeController
         View::render('public/access_code', [
             'error'       => 'Ongeldige toegangscode. Probeer opnieuw.',
             'rateLimited' => false,
+            'next'        => $next,
         ]);
     }
 }

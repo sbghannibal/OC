@@ -22,7 +22,11 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="publicNavbar">
-                <div class="ms-auto mt-2 mt-lg-0">
+                <div class="ms-auto mt-2 mt-lg-0 d-flex gap-2 align-items-center">
+                    <a href="<?= htmlspecialchars($basePath . '/events', ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-outline-light btn-sm fw-semibold px-3">
+                        <i class="bi bi-calendar-event me-1"></i>Evenementen
+                    </a>
                     <a href="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>"
                        class="btn btn-light btn-sm fw-semibold px-3">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Deelnemen

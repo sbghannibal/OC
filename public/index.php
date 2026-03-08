@@ -22,9 +22,12 @@ $config = require $configFile;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\AuditLogController;
 use App\Controllers\Admin\EventController;
+use App\Controllers\Admin\InschrijvingenController;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Public\AccessCodeController;
+use App\Controllers\Public\EventListController;
 use App\Controllers\Public\HomeController;
+use App\Controllers\Public\RegistrationController;
 use App\Core\App;
 use App\Core\Router;
 use App\Core\View;
@@ -47,6 +50,27 @@ $router->get('/toegang', function () use ($config): void {
 
 $router->post('/toegang', function () use ($config): void {
     (new AccessCodeController($config))->submit();
+});
+
+// ── Public event routes ────────────────────────────────────────────────────
+$router->get('/events', function () use ($config): void {
+    (new EventListController($config))->index();
+});
+
+$router->get('/events/{slug}', function (array $params) use ($config): void {
+    (new EventListController($config))->show($params['slug']);
+});
+
+$router->get('/events/{slug}/deelnemen', function (array $params) use ($config): void {
+    (new RegistrationController($config))->form($params['slug']);
+});
+
+$router->post('/events/{slug}/deelnemen', function (array $params) use ($config): void {
+    (new RegistrationController($config))->submit($params['slug']);
+});
+
+$router->get('/events/{slug}/qr', function (array $params) use ($config): void {
+    (new RegistrationController($config))->qr($params['slug']);
 });
 
 // ── Admin routes ───────────────────────────────────────────────────────────
@@ -102,6 +126,19 @@ $router->post('/admin/users/delete', function () use ($config): void {
 // ── Audit log route ────────────────────────────────────────────────────────
 $router->get('/admin/audit-log', function () use ($config): void {
     (new AuditLogController($config))->index();
+});
+
+// ── Inschrijvingen routes ──────────────────────────────────────────────────
+$router->get('/admin/inschrijvingen', function () use ($config): void {
+    (new InschrijvingenController($config))->index();
+});
+
+$router->get('/admin/inschrijvingen.csv', function () use ($config): void {
+    (new InschrijvingenController($config))->export();
+});
+
+$router->post('/admin/inschrijvingen/betaalstatus', function () use ($config): void {
+    (new InschrijvingenController($config))->updatePaymentStatus();
 });
 
 $app = new App($router);

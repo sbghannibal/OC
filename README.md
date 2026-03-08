@@ -92,8 +92,67 @@ routes like `/admin` and `/admin/login` work without the `index.php` prefix.
 | Dashboard | `/admin` |
 | Events | `/admin/events` |
 | Create event | `/admin/events/new` |
+| Inschrijvingen | `/admin/inschrijvingen` |
+| Inschrijvingen CSV export | `/admin/inschrijvingen.csv` |
 | User management | `/admin/users` |
 | Audit log | `/admin/audit-log` |
+
+## Public event pages & registration
+
+| Feature | Path |
+|---------|------|
+| Event overview | `/events` |
+| Event detail | `/events/{slug}` |
+| Registration form | `/events/{slug}/deelnemen` |
+| QR signed registration link | `/events/{slug}/qr?ts={unix_ts}&sig={hmac}` |
+
+### Access-code gate
+
+Visitors must enter the event access code (via `/toegang`) before they can register. After entering the correct code the session flag `access_ok_{slug}` is set and they are redirected to the registration form.
+
+If a visitor arrives via a **signed QR-link** they bypass the manual access-code step: the link is verified and the session flag is set automatically.
+
+### QR registration links
+
+Signed QR links let you share a direct registration URL (e.g. printed on a flyer) that grants access to the form for a specific event without requiring a manual access-code entry.
+
+**Setup:**
+
+1. Add `APP_SIGNING_KEY` to your `.env` file (minimum 32 random hex characters):
+
+   ```bash
+   # Generate a secure key
+   php -r "echo bin2hex(random_bytes(32));"
+   ```
+
+   ```dotenv
+   APP_SIGNING_KEY=your-generated-key-here
+   ```
+
+2. Log in to the admin dashboard and navigate to **Inschrijvingen**. A fresh signed QR link (valid for 7 days) is displayed at the top of the page. Copy the link or encode it as a QR code.
+
+**Link format:**
+
+```
+/events/{slug}/qr?ts={unix_timestamp}&sig={hmac_sha256}
+```
+
+- `ts` – Unix timestamp of when the link was generated
+- `sig` – HMAC-SHA256 of `{slug}|{ts}` using `APP_SIGNING_KEY`
+- Links expire after **7 days**
+- Signature verification uses constant-time comparison (`hash_equals`)
+
+> **Security:** Keep `APP_SIGNING_KEY` secret. Rotate the key to invalidate all existing links.
+
+### Payment status tracking
+
+The **Inschrijvingen** admin page shows all registrations for the current event. Each registration can be marked as:
+
+- **Onbekend** (default) — payment status not yet checked
+- **Betaald** — payment confirmed
+- **Niet betaald** — payment outstanding
+
+Changes are saved immediately via a per-row form. The CSV export includes the `payment_status` column.
 
 ## Multi-user accounts & audit log
 
