@@ -1,14 +1,15 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Core;
 
-class App {
-    private $router;
+final class App
+{
+    public function __construct(private readonly Router $router) {}
 
-    public function __construct(Router $router) {
-        $this->router = $router;
-    }
-
-    public function run() {
-        // Your application logic here
+    public function run(): void
+    {
+        $this->router->dispatch();
     }
 }
