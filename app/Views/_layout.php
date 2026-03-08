@@ -22,10 +22,17 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="publicNavbar">
-                <div class="ms-auto mt-2 mt-lg-0">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= htmlspecialchars($basePath . '/events', ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="bi bi-calendar-event me-1"></i>Evenementen
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-2 mt-lg-0">
                     <a href="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>"
                        class="btn btn-light btn-sm fw-semibold px-3">
-                        <i class="bi bi-box-arrow-in-right me-1"></i>Deelnemen
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Toegangscode
                     </a>
                 </div>
             </div>

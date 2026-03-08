@@ -32,17 +32,20 @@ final class AccessCodeController
 
     public function form(): void
     {
-        View::render('public/access_code', ['error' => null, 'rateLimited' => false]);
+        $returnTo = $this->safeReturnUrl();
+        View::render('public/access_code', ['error' => null, 'rateLimited' => false, 'returnTo' => $returnTo]);
     }
 
     public function submit(): void
     {
         $basePath = $this->config['base_path'] ?? '';
+        $returnTo = $this->safeReturnUrl();
 
         if (!Csrf::verify()) {
             View::render('public/access_code', [
                 'error'       => 'Ongeldig formulierverzoek. Probeer opnieuw.',
                 'rateLimited' => false,
+                'returnTo'    => $returnTo,
             ]);
             return;
         }
@@ -54,6 +57,7 @@ final class AccessCodeController
             View::render('public/access_code', [
                 'error'       => null,
                 'rateLimited' => true,
+                'returnTo'    => $returnTo,
             ]);
             return;
         }
@@ -65,6 +69,7 @@ final class AccessCodeController
             View::render('public/access_code', [
                 'error'       => 'Er is momenteel geen actief evenement.',
                 'rateLimited' => false,
+                'returnTo'    => $returnTo,
             ]);
             return;
         }
@@ -74,7 +79,8 @@ final class AccessCodeController
         if (hash_equals($event['access_code'], $code)) {
             RateLimit::reset($key);
             $_SESSION['access_ok_' . $event['slug']] = true;
-            header('Location: ' . $basePath . '/');
+            $redirect = ($returnTo !== '') ? $returnTo : $basePath . '/';
+            header('Location: ' . $redirect);
             exit;
         }
 
@@ -82,6 +88,23 @@ final class AccessCodeController
         View::render('public/access_code', [
             'error'       => 'Ongeldige toegangscode. Probeer opnieuw.',
             'rateLimited' => false,
+            'returnTo'    => $returnTo,
         ]);
+    }
+
+    /** Return a safe, same-origin relative return URL or empty string. */
+    private function safeReturnUrl(): string
+    {
+        $basePath = $this->config['base_path'] ?? '';
+        $return   = trim((string) ($_GET['return'] ?? $_POST['return'] ?? ''));
+        if ($return === '') {
+            return '';
+        }
+        // Only allow URLs that start with the base path (relative, same-origin)
+        $allowed = $basePath . '/';
+        if (str_starts_with($return, $allowed) || $return === $basePath) {
+            return $return;
+        }
+        return '';
     }
 }
