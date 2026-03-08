@@ -73,6 +73,18 @@ DocumentRoot /path/to/OC/public
 </Directory>
 ```
 
+#### Apache – pretty URLs (mod_rewrite)
+
+The file `public/.htaccess` is included in the repository and handles URL rewriting so that
+routes like `/admin` and `/admin/login` work without the `index.php` prefix.
+
+**Requirements:**
+- `mod_rewrite` must be enabled (`sudo a2enmod rewrite` on Debian/Ubuntu).
+- The `<Directory>` block for `public/` must have `AllowOverride All` (or at least `AllowOverride FileInfo`) so Apache reads the `.htaccess`.
+
+> **Fallback:** Without mod_rewrite you can still reach all routes via `index.php/…`
+> (e.g. `/OC/public/index.php/admin/login`), but the clean URLs will not work.
+
 ## Admin features
 
 | Feature | Path |

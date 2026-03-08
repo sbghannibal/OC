@@ -1,0 +1,13 @@
+Options -Indexes
+
+RewriteEngine On
+# Update RewriteBase to match your installation subfolder.
+# Use "/" if public/ is the document root.
+RewriteBase /OC/public/
+
+# Bypass rewrite for existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through the front controller
+RewriteRule ^ index.php [L]
