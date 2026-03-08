@@ -58,7 +58,7 @@ final class AccessCodeController
             return;
         }
 
-        $pdo   = Database::getInstance($this->config['db_path']);
+        $pdo   = Database::getInstance($this->config['db']);
         $event = Event::findCurrent($pdo);
 
         if ($event === null) {

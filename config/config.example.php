@@ -2,30 +2,30 @@
 
 declare(strict_types=1);
 
+// Helper: read an env var, falling back to $default when not set.
+$env = static fn(string $key, string $default = ''): string
+    => (string)(getenv($key) !== false ? getenv($key) : $default);
+
 return [
     /*
      * Base URL path, e.g. '/OC/public'. Leave empty for root installs.
-     * Auto-detected from SCRIPT_NAME when set to ''.
+     * Set APP_BASE_PATH in your .env file, or leave it unset for auto-detection.
      */
-    'base_path' => '',
+    'base_path' => $env('APP_BASE_PATH'),
 
-    /* Admin dashboard credentials */
-    'admin' => [
-        /*
-         * bcrypt hash of the admin password.
-         * Generate a new one with: php -r "echo password_hash('your-password', PASSWORD_DEFAULT);"
-         * Default password is: change-me-in-production
-         */
-        'password_hash' => '$2y$10$D33TiM2v5aINduENh2oqqeIK55fyqUoUN916mk9OHTgU.2rKwn8xe',
+    /* MySQL database connection */
+    'db' => [
+        'host'     => $env('DB_HOST', 'localhost'),
+        'port'     => (int) $env('DB_PORT', '3306'),
+        'database' => $env('DB_DATABASE'),
+        'username' => $env('DB_USERNAME'),
+        'password' => $env('DB_PASSWORD'),
+        'charset'  => 'utf8mb4',
     ],
 
-    /* SQLite database file path (writable location) */
-    'db_path' => __DIR__ . '/../data/oc.db',
-
     'sepa' => [
-        // Vul in met echte gegevens voor productie-gebruik.
-        'beneficiary_name' => '',
-        'iban'             => '',
-        'bic'              => '',
+        'beneficiary_name' => $env('SEPA_NAME'),
+        'iban'             => $env('SEPA_IBAN'),
+        'bic'              => $env('SEPA_BIC'),
     ],
 ];
