@@ -36,6 +36,8 @@
                 <th>Naam</th>
                 <th>E-mail</th>
                 <th>Telefoon</th>
+                <th>Klas</th>
+                <th>Opties</th>
                 <th>Opmerking</th>
                 <th>Aangemeld op</th>
                 <th>Betaalstatus</th>
@@ -55,6 +57,21 @@
                     </a>
                 </td>
                 <td><?= htmlspecialchars($r['telefoon'] ?? '–', ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($r['klas_name'] ?? '–', ENT_QUOTES, 'UTF-8') ?></td>
+                <td>
+                    <?php if (!empty($r['chosen_options'])): ?>
+                    <ul class="mb-0 ps-3 small">
+                        <?php foreach ($r['chosen_options'] as $opt): ?>
+                        <li>
+                            <em><?= htmlspecialchars($opt['group_name'], ENT_QUOTES, 'UTF-8') ?>:</em>
+                            <?= htmlspecialchars($opt['item_name'], ENT_QUOTES, 'UTF-8') ?>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php else: ?>
+                    <span class="text-muted">–</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= htmlspecialchars($r['opmerking'] ?? '–', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($r['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td>

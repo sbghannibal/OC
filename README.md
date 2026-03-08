@@ -95,6 +95,9 @@ routes like `/admin` and `/admin/login` work without the `index.php` prefix.
 | Dashboard | `/admin` |
 | Events | `/admin/events` |
 | Create event | `/admin/events/new` |
+| Event options | `/admin/events/{slug}/opties` |
+| Classes | `/admin/klassen` |
+| Create class | `/admin/klassen/new` |
 | Registrations | `/admin/inschrijvingen` |
 | CSV export | `/admin/inschrijvingen.csv` |
 | User management | `/admin/users` |
@@ -121,7 +124,27 @@ $url = '/events/' . rawurlencode($slug) . '/qr?ts=' . $ts . '&sig=' . $sig;
 
 The link is valid for **7 days**. Set `APP_SIGNING_KEY` to a strong random secret in your `.env`.
 
-## Payment tracking
+## Classes (klassen)
+
+School classes (`1A` through `6B`) are seeded automatically on first run. Admins can add or delete classes via `/admin/klassen`. A class cannot be deleted if it is referenced by any registration.
+
+## Event option groups
+
+Per event, admins can configure **option groups** (e.g. _Film_, _Drank_, _Eten_) via `/admin/events/{slug}/opties`. Each group has:
+- **Naam** – display name shown on the registration form
+- **Max keuzes** – maximum number of items the registrant may pick (0 = group disabled)
+- **Verplicht** – whether at least one selection is required
+
+Each group contains **items** with a **min/max klas** (grade 1–6) visibility range. The registration form shows only items whose grade range includes the registrant's class, and the server validates that submitted selections are within the allowed items and respect the max count.
+
+## Classes in registrations
+
+The registration form now includes a **Klas** dropdown (required). The selected class is stored with the registration and shown in the admin overview and CSV export.
+
+## CSV export
+
+The CSV export now includes: Name, Email, Phone, Class, Comment, Registered on, Chosen options (grouped), Payment status, Paid at, Payment note.
+
 
 The admin registrations page (`/admin/inschrijvingen`) shows payment status for each participant. Click the pencil icon to set:
 

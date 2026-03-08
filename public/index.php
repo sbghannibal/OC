@@ -21,7 +21,9 @@ $config = require $configFile;
 
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\AuditLogController;
+use App\Controllers\Admin\ClassController;
 use App\Controllers\Admin\EventController;
+use App\Controllers\Admin\EventOptionsController;
 use App\Controllers\Admin\RegistrationController;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Public\AccessCodeController;
@@ -125,6 +127,48 @@ $router->post('/admin/users/delete', function () use ($config): void {
 // ── Audit log route ────────────────────────────────────────────────────────
 $router->get('/admin/audit-log', function () use ($config): void {
     (new AuditLogController($config))->index();
+});
+
+// ── Classes (klassen) routes ───────────────────────────────────────────────
+$router->get('/admin/klassen', function () use ($config): void {
+    (new ClassController($config))->index();
+});
+
+$router->get('/admin/klassen/new', function () use ($config): void {
+    (new ClassController($config))->create();
+});
+
+$router->post('/admin/klassen', function () use ($config): void {
+    (new ClassController($config))->store();
+});
+
+$router->post('/admin/klassen/delete', function () use ($config): void {
+    (new ClassController($config))->destroy();
+});
+
+// ── Event options (opties) routes ──────────────────────────────────────────
+$router->get('/admin/events/{slug}/opties', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->index($params['slug']);
+});
+
+$router->post('/admin/events/{slug}/opties', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->storeGroup($params['slug']);
+});
+
+$router->post('/admin/events/{slug}/opties/{group_id}/update', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->updateGroup($params['slug'], (int) $params['group_id']);
+});
+
+$router->post('/admin/events/{slug}/opties/{group_id}/delete', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->deleteGroup($params['slug'], (int) $params['group_id']);
+});
+
+$router->post('/admin/events/{slug}/opties/{group_id}/items', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->storeItem($params['slug'], (int) $params['group_id']);
+});
+
+$router->post('/admin/events/{slug}/opties/{group_id}/items/{item_id}/delete', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->deleteItem($params['slug'], (int) $params['group_id'], (int) $params['item_id']);
 });
 
 // ── Registrations routes ───────────────────────────────────────────────────

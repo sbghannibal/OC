@@ -40,6 +40,10 @@
                     <button type="submit" class="btn btn-sm btn-outline-success">Maak huidig</button>
                 </form>
                 <?php endif; ?>
+                <a href="<?= htmlspecialchars($basePath . '/admin/events/' . rawurlencode($event['slug']) . '/opties', ENT_QUOTES, 'UTF-8') ?>"
+                   class="btn btn-sm btn-outline-secondary mt-1">
+                    <i class="bi bi-list-check me-1"></i>Opties
+                </a>
             </td>
         </tr>
     <?php endforeach; ?>

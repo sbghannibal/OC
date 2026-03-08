@@ -23,6 +23,11 @@
         <div class="collapse navbar-collapse" id="adminNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
+                    <a class="nav-link" href="<?= htmlspecialchars($basePath . '/admin/klassen', ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="bi bi-mortarboard"></i>Klassen
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="<?= htmlspecialchars($basePath . '/admin/events', ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bi bi-calendar-event"></i>Evenementen
                     </a>

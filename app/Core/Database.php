@@ -67,6 +67,16 @@ final class Database
             INDEX idx_audit_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+        // Classes (klassen) – school classes that students can belong to
+        $pdo->exec("CREATE TABLE IF NOT EXISTS classes (
+            id         INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            name       VARCHAR(20) NOT NULL UNIQUE,
+            created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Seed default classes if the table is empty
+        self::seedClasses($pdo);
+
         // Registrations – participants who signed up for an event
         $pdo->exec("CREATE TABLE IF NOT EXISTS registrations (
             id              INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -74,6 +84,8 @@ final class Database
             naam            VARCHAR(255) NOT NULL,
             email           VARCHAR(255) NOT NULL,
             telefoon        VARCHAR(50)  DEFAULT NULL,
+            klas_id         INT          DEFAULT NULL,
+            klas_name       VARCHAR(20)  DEFAULT NULL,
             opmerking       TEXT         DEFAULT NULL,
             payment_status  ENUM('unknown','paid','unpaid') NOT NULL DEFAULT 'unknown',
             paid_at         DATETIME     DEFAULT NULL,
@@ -89,6 +101,57 @@ final class Database
             "ALTER TABLE registrations ADD COLUMN paid_at DATETIME DEFAULT NULL");
         self::addColumnIfMissing($pdo, 'registrations', 'payment_note',
             "ALTER TABLE registrations ADD COLUMN payment_note TEXT DEFAULT NULL");
+        // Add klas columns to existing registrations (idempotent)
+        self::addColumnIfMissing($pdo, 'registrations', 'klas_id',
+            "ALTER TABLE registrations ADD COLUMN klas_id INT DEFAULT NULL");
+        self::addColumnIfMissing($pdo, 'registrations', 'klas_name',
+            "ALTER TABLE registrations ADD COLUMN klas_name VARCHAR(20) DEFAULT NULL");
+
+        // Event option groups – configurable option groups per event (e.g. Film, Drank, Eten)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS event_option_groups (
+            id           INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            event_id     INT          NOT NULL,
+            name         VARCHAR(100) NOT NULL,
+            max_select   INT          NOT NULL DEFAULT 1,
+            is_required  TINYINT(1)   NOT NULL DEFAULT 0,
+            sort_order   INT          NOT NULL DEFAULT 0,
+            created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_eog_event (event_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Event option items – individual selectable items within a group
+        $pdo->exec("CREATE TABLE IF NOT EXISTS event_option_items (
+            id           INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            group_id     INT          NOT NULL,
+            name         VARCHAR(255) NOT NULL,
+            min_grade    TINYINT      NOT NULL DEFAULT 1,
+            max_grade    TINYINT      NOT NULL DEFAULT 6,
+            sort_order   INT          NOT NULL DEFAULT 0,
+            created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_eoi_group (group_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Registration chosen option items – join table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS registration_option_items (
+            registration_id INT NOT NULL,
+            item_id         INT NOT NULL,
+            PRIMARY KEY (registration_id, item_id),
+            INDEX idx_roi_item (item_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    /** Seed the default 12 school classes if the classes table is empty. */
+    private static function seedClasses(\PDO $pdo): void
+    {
+        $count = (int) $pdo->query("SELECT COUNT(*) FROM classes")->fetchColumn();
+        if ($count > 0) {
+            return;
+        }
+        $defaults = ['1A','1B','2A','2B','3A','3B','4A','4B','5A','5B','6A','6B'];
+        $stmt     = $pdo->prepare("INSERT IGNORE INTO classes (name) VALUES (:name)");
+        foreach ($defaults as $name) {
+            $stmt->execute([':name' => $name]);
+        }
     }
 
     /** Add a column only when it does not yet exist (idempotent ALTER TABLE helper). */

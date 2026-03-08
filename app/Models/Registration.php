@@ -9,20 +9,22 @@ final class Registration
     /**
      * Persist a new registration for an event.
      *
-     * @param array{event_id: int, naam: string, email: string, telefoon: string, opmerking?: string} $data
+     * @param array{event_id: int, naam: string, email: string, telefoon: string, klas_id?: int|null, klas_name?: string|null, opmerking?: string|null} $data
      */
     public static function create(\PDO $pdo, array $data): int
     {
         $stmt = $pdo->prepare(
-            "INSERT INTO registrations (event_id, naam, email, telefoon, opmerking)
-             VALUES (:event_id, :naam, :email, :telefoon, :opmerking)"
+            "INSERT INTO registrations (event_id, naam, email, telefoon, klas_id, klas_name, opmerking)
+             VALUES (:event_id, :naam, :email, :telefoon, :klas_id, :klas_name, :opmerking)"
         );
         $stmt->execute([
-            ':event_id' => $data['event_id'],
-            ':naam'     => $data['naam'],
-            ':email'    => $data['email'],
-            ':telefoon' => $data['telefoon'],
-            ':opmerking'=> $data['opmerking'] ?? null,
+            ':event_id'  => $data['event_id'],
+            ':naam'      => $data['naam'],
+            ':email'     => $data['email'],
+            ':telefoon'  => $data['telefoon'],
+            ':klas_id'   => $data['klas_id'] ?? null,
+            ':klas_name' => $data['klas_name'] ?? null,
+            ':opmerking' => $data['opmerking'] ?? null,
         ]);
         return (int) $pdo->lastInsertId();
     }
