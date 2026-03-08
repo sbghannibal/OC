@@ -17,16 +17,15 @@ body {
 a { color: var(--oc-accent); }
 a:hover { color: var(--oc-brand); }
 
-/* ---- Public header ---- */
-.oc-header {
+/* ---- Public navbar ---- */
+.oc-public-nav {
     background: linear-gradient(135deg, var(--oc-brand) 0%, var(--oc-accent) 100%);
-    padding: 1.25rem 0;
-    margin-bottom: 2.5rem;
+    padding: 1rem 0;
     color: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
 }
 
-.oc-header .oc-brand-link {
+.oc-public-nav .oc-brand-link {
     display: inline-flex;
     align-items: center;
     gap: .45rem;
@@ -37,7 +36,25 @@ a:hover { color: var(--oc-brand); }
     text-decoration: none;
 }
 
-.oc-header .oc-brand-link:hover { color: rgba(255, 255, 255, .85); }
+.oc-public-nav .oc-brand-link:hover { color: rgba(255, 255, 255, .85); }
+
+/* ---- Hero section ---- */
+.oc-hero {
+    padding: 3rem 0 2rem;
+}
+
+.oc-hero-title {
+    color: var(--oc-brand);
+}
+
+/* ---- Empty-state / event cards ---- */
+.oc-empty-card {
+    border-top: 3px solid var(--oc-accent);
+}
+
+.oc-event-card {
+    border-top: 3px solid #16a34a;
+}
 
 /* ---- Admin navbar ---- */
 .navbar.oc-admin-nav {
