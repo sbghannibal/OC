@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Core\Database;
 use App\Core\View;
 use App\Models\Event;
+use App\Models\EventOptionItem;
 use App\Models\Registration;
 
 final class RegistrationController
@@ -29,6 +30,12 @@ final class RegistrationController
         $pdo           = Database::getInstance($this->config['db']);
         $event         = Event::findCurrent($pdo);
         $registrations = $event !== null ? Registration::findByEvent($pdo, (int) $event['id']) : [];
+
+        // Attach chosen option items to each registration
+        foreach ($registrations as &$reg) {
+            $reg['chosen_options'] = EventOptionItem::findChosenForRegistration($pdo, (int) $reg['id']);
+        }
+        unset($reg);
 
         View::render('admin/registrations/index', [
             'event'         => $event,
@@ -115,15 +122,22 @@ final class RegistrationController
             return;
         }
 
-        fputcsv($out, ['ID', 'Naam', 'E-mail', 'Telefoon', 'Opmerking', 'Aangemeld op', 'Betaalstatus', 'Betaald op', 'Betaalopmerking'], ';');
+        fputcsv($out, ['ID', 'Naam', 'E-mail', 'Telefoon', 'Klas', 'Opmerking', 'Aangemeld op', 'Gekozen opties', 'Betaalstatus', 'Betaald op', 'Betaalopmerking'], ';');
         foreach ($registrations as $r) {
+            $options = EventOptionItem::findChosenForRegistration($pdo, (int) $r['id']);
+            $optionStr = implode('; ', array_map(
+                static fn($o) => $o['group_name'] . ': ' . $o['item_name'],
+                $options
+            ));
             fputcsv($out, [
                 $r['id'],
                 $r['naam'],
                 $r['email'],
                 $r['telefoon'] ?? '',
+                $r['klas_name'] ?? '',
                 $r['opmerking'] ?? '',
                 $r['created_at'],
+                $optionStr,
                 $r['payment_status'] ?? 'unknown',
                 $r['paid_at'] ?? '',
                 $r['payment_note'] ?? '',
