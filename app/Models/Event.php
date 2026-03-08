@@ -69,4 +69,25 @@ final class Event
         $row = $stmt->fetch();
         return ($row !== false) ? $row : null;
     }
+
+    /**
+     * Check whether registration is currently open for the event.
+     *
+     * Registration is open when:
+     *  - starts_at is not set OR current time >= starts_at
+     *  - ends_at   is not set OR current time <= ends_at
+     *
+     * @param array<string,mixed> $event
+     */
+    public static function isRegistrationOpen(array $event): bool
+    {
+        $now = time();
+        if (!empty($event['starts_at']) && strtotime((string) $event['starts_at']) > $now) {
+            return false;
+        }
+        if (!empty($event['ends_at']) && strtotime((string) $event['ends_at']) < $now) {
+            return false;
+        }
+        return true;
+    }
 }

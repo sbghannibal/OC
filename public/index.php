@@ -75,6 +75,14 @@ $router->get('/events/{slug}/qr', function (array $params) use ($config): void {
     (new PublicEventController($config))->qrBypass($params['slug']);
 });
 
+$router->get('/events/{slug}/overzicht', function (array $params) use ($config): void {
+    (new PublicEventController($config))->overview($params['slug']);
+});
+
+$router->post('/events/{slug}/afmelden', function (array $params) use ($config): void {
+    (new PublicEventController($config))->afmelden($params['slug']);
+});
+
 // ── Parent auth routes ─────────────────────────────────────────────────────
 $router->get('/ouder/registreren', function () use ($config): void {
     (new ParentAuthController($config))->registerForm();
