@@ -38,6 +38,9 @@ DB_PASSWORD=your-db-password
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-password
+
+# QR-link signing key (generate with: php -r "echo bin2hex(random_bytes(32));")
+APP_SIGNING_KEY=your-random-signing-key
 ```
 
 > **Never commit `.env` to version control.** It is already listed in `.gitignore`.
@@ -92,8 +95,41 @@ routes like `/admin` and `/admin/login` work without the `index.php` prefix.
 | Dashboard | `/admin` |
 | Events | `/admin/events` |
 | Create event | `/admin/events/new` |
+| Registrations | `/admin/inschrijvingen` |
+| CSV export | `/admin/inschrijvingen.csv` |
 | User management | `/admin/users` |
 | Audit log | `/admin/audit-log` |
+
+## Public event features
+
+| Feature | Path |
+|---------|------|
+| Event list | `/events` |
+| Event detail | `/events/{slug}` |
+| Registration form | `/events/{slug}/deelnemen` |
+| QR-link bypass | `/events/{slug}/qr?ts=...&sig=...` |
+
+## QR-link bypass
+
+Generate a signed QR URL that allows one-step access to the registration form — no access code required:
+
+```php
+$ts  = time();
+$sig = hash_hmac('sha256', $slug . '.' . $ts, getenv('APP_SIGNING_KEY'));
+$url = '/events/' . rawurlencode($slug) . '/qr?ts=' . $ts . '&sig=' . $sig;
+```
+
+The link is valid for **7 days**. Set `APP_SIGNING_KEY` to a strong random secret in your `.env`.
+
+## Payment tracking
+
+The admin registrations page (`/admin/inschrijvingen`) shows payment status for each participant. Click the pencil icon to set:
+
+- **Betaalstatus**: `Onbekend`, `Betaald`, or `Niet betaald`
+- **Betaald op**: exact datetime of payment
+- **Betaalopmerking**: free-form note
+
+All payment fields are included in the CSV export.
 
 ## Multi-user accounts & audit log
 
