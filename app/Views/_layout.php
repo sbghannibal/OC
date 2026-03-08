@@ -11,14 +11,27 @@
     <link rel="stylesheet" href="<?= htmlspecialchars(rtrim($basePath, '/'), ENT_QUOTES, 'UTF-8') ?>/css/app.css">
 </head>
 <body>
-    <header class="oc-header">
+    <nav class="navbar oc-public-nav navbar-dark navbar-expand-lg mb-4">
         <div class="container">
-            <a href="<?= htmlspecialchars(($basePath ?: '/'), ENT_QUOTES, 'UTF-8') ?>" class="oc-brand-link">
-                <i class="bi bi-award-fill"></i>OC Acties
+            <a class="navbar-brand oc-brand-link" href="<?= htmlspecialchars(($basePath ?: '/'), ENT_QUOTES, 'UTF-8') ?>">
+                <i class="bi bi-award-fill me-1"></i>OC Acties
             </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#publicNavbar" aria-controls="publicNavbar"
+                    aria-expanded="false" aria-label="Menu openen">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="publicNavbar">
+                <div class="ms-auto mt-2 mt-lg-0">
+                    <a href="<?= htmlspecialchars($basePath . '/toegang', ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-light btn-sm fw-semibold px-3">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Deelnemen
+                    </a>
+                </div>
+            </div>
         </div>
-    </header>
-    <main class="container pb-4">
+    </nav>
+    <main class="container pb-5">
         <?php include $viewFile; ?>
     </main>
     <footer class="oc-footer">
