@@ -277,7 +277,8 @@ final class EventController
         }
 
         // ── Validate option selections ───────────────────────────────────────
-        $grade  = ($klasRow !== null) ? (OcClass::gradeFromName((string) $klasRow['name']) ?? 0) : 0;
+        $classRank = ($klasRow !== null) ? (int) ($klasRow['rank'] ?? 0) : 0;
+        $grade     = ($klasRow !== null) ? (OcClass::gradeFromName((string) $klasRow['name']) ?? 0) : 0;
         $groups = EventOptionGroup::findByEvent($pdo, (int) $event['id']);
         foreach ($groups as &$group) {
             $group['items'] = EventOptionItem::findByGroup($pdo, (int) $group['id']);
@@ -296,9 +297,13 @@ final class EventController
             }
             $raw = array_map('intval', $raw);
 
-            $allowedItems = ($grade > 0)
-                ? EventOptionItem::findByGroupForGrade($pdo, $groupId, $grade)
-                : $group['items'];
+            if ($classRank > 0) {
+                $allowedItems = EventOptionItem::findByGroupForClassRank($pdo, $groupId, $classRank);
+            } elseif ($grade > 0) {
+                $allowedItems = EventOptionItem::findByGroupForGrade($pdo, $groupId, $grade);
+            } else {
+                $allowedItems = $group['items'];
+            }
             $allowedIds = array_map(static fn($i) => (int) $i['id'], $allowedItems);
 
             $valid = array_values(array_intersect($raw, $allowedIds));

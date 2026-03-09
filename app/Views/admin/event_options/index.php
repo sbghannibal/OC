@@ -1,8 +1,38 @@
 <?php
 /** @var array<string,mixed> $event */
 /** @var list<array<string,mixed>> $groups */
+/** @var list<array<string,mixed>> $classes */
 /** @var list<string> $errors */
 $slug = $event['slug'];
+
+// Build a rank→name lookup for displaying min/max class on items
+$rankToClass = [];
+foreach ($classes as $cls) {
+    if ((int) $cls['rank'] > 0) {
+        $rankToClass[(int) $cls['rank']] = $cls['name'];
+    }
+}
+
+/**
+ * Render a class-rank <select> element.
+ *
+ * @param string $name       HTML name attribute
+ * @param int    $selected   Currently selected rank value
+ * @param string $id         HTML id attribute
+ */
+$classRankSelect = static function (string $name, int $selected, string $id) use ($classes): void {
+    echo '<select name="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"'
+        . ' id="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"'
+        . ' class="form-select">';
+    echo '<option value="0"' . ($selected === 0 ? ' selected' : '') . '>Alle klassen</option>';
+    foreach ($classes as $cls) {
+        $rank = (int) $cls['rank'];
+        echo '<option value="' . $rank . '"' . ($selected === $rank ? ' selected' : '') . '>'
+            . htmlspecialchars((string) $cls['name'], ENT_QUOTES, 'UTF-8')
+            . '</option>';
+    }
+    echo '</select>';
+};
 ?>
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
@@ -119,20 +149,73 @@ $slug = $event['slug'];
             </thead>
             <tbody>
             <?php foreach ($group['items'] as $item): ?>
+            <?php
+                $iid         = (int) $item['id'];
+                $minRank     = (int) ($item['min_class_rank'] ?? 0);
+                $maxRank     = (int) ($item['max_class_rank'] ?? 0);
+                $minLabel    = $minRank > 0 ? ($rankToClass[$minRank] ?? 'Onbekend') : 'Alle';
+                $maxLabel    = $maxRank > 0 ? ($rankToClass[$maxRank] ?? 'Onbekend') : 'Alle';
+            ?>
                 <tr>
                     <td><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= number_format((float) ($item['price'] ?? 0), 2, ',', '.') ?></td>
-                    <td><?= (int) $item['min_grade'] ?></td>
-                    <td><?= (int) $item['max_grade'] ?></td>
+                    <td><?= htmlspecialchars((string) $minLabel, ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars((string) $maxLabel, ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= (int) $item['sort_order'] ?></td>
-                    <td>
-                        <form method="post"
-                              action="<?= htmlspecialchars($basePath . '/admin/events/' . rawurlencode($slug) . '/opties/' . $gid . '/items/' . (int) $item['id'] . '/delete', ENT_QUOTES, 'UTF-8') ?>"
+                    <td class="text-nowrap">
+                        <!-- Edit item button -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 me-1"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#editItem<?= $iid ?>">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <!-- Delete item form -->
+                        <form method="post" class="d-inline"
+                              action="<?= htmlspecialchars($basePath . '/admin/events/' . rawurlencode($slug) . '/opties/' . $gid . '/items/' . $iid . '/delete', ENT_QUOTES, 'UTF-8') ?>"
                               onsubmit="return confirm('Item verwijderen?')">
                             <?= \App\Core\Csrf::field() ?>
                             <button type="submit" class="btn btn-sm btn-outline-danger py-0">
                                 <i class="bi bi-trash"></i>
                             </button>
+                        </form>
+                    </td>
+                </tr>
+                <!-- Inline edit form for item -->
+                <tr class="collapse" id="editItem<?= $iid ?>">
+                    <td colspan="6" class="bg-light">
+                        <form method="post"
+                              action="<?= htmlspecialchars($basePath . '/admin/events/' . rawurlencode($slug) . '/opties/' . $gid . '/items/' . $iid . '/update', ENT_QUOTES, 'UTF-8') ?>">
+                            <?= \App\Core\Csrf::field() ?>
+                            <div class="row g-2 align-items-end py-2">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Naam <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control"
+                                           value="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold">Prijs (€)</label>
+                                    <input type="number" name="price" class="form-control" min="0" step="0.01"
+                                           value="<?= number_format((float) ($item['price'] ?? 0), 2, '.', '') ?>">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold">Min klas</label>
+                                    <?php $classRankSelect('min_class_rank', $minRank, 'editMinRank' . $iid) ?>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-semibold">Max klas</label>
+                                    <?php $classRankSelect('max_class_rank', $maxRank, 'editMaxRank' . $iid) ?>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label fw-semibold">Volgorde</label>
+                                    <input type="number" name="sort_order" class="form-control"
+                                           value="<?= (int) $item['sort_order'] ?>">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-check-lg me-1"></i>Opslaan
+                                    </button>
+                                </div>
+                            </div>
                         </form>
                     </td>
                 </tr>
@@ -154,19 +237,19 @@ $slug = $event['slug'];
                     <label class="form-label fw-semibold">Prijs (€)</label>
                     <input type="number" name="price" class="form-control" min="0" step="0.01" value="0.00">
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label fw-semibold">Min klas (1-6)</label>
-                    <input type="number" name="min_grade" class="form-control" min="1" max="6" value="1">
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label fw-semibold">Max klas (1-6)</label>
-                    <input type="number" name="max_grade" class="form-control" min="1" max="6" value="6">
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Min klas</label>
+                    <?php $classRankSelect('min_class_rank', 0, 'newMinRank' . $gid) ?>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label fw-semibold">Max klas</label>
+                    <?php $classRankSelect('max_class_rank', 0, 'newMaxRank' . $gid) ?>
+                </div>
+                <div class="col-md-1">
                     <label class="form-label fw-semibold">Volgorde</label>
                     <input type="number" name="sort_order" class="form-control" value="0">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-success w-100">
                         <i class="bi bi-plus-lg me-1"></i>Toevoegen
                     </button>

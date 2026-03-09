@@ -71,6 +71,7 @@ final class Database
         $pdo->exec("CREATE TABLE IF NOT EXISTS classes (
             id         INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
             name       VARCHAR(20) NOT NULL UNIQUE,
+            rank       INT         NOT NULL DEFAULT 0,
             created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
@@ -178,19 +179,56 @@ final class Database
         // Unique index on (event_id, child_id) – NULL child_id rows are exempt (MySQL semantics)
         self::addIndexIfMissing($pdo, 'registrations', 'uniq_reg_event_child',
             "ALTER TABLE registrations ADD UNIQUE INDEX uniq_reg_event_child (event_id, child_id)");
+
+        // Add rank column to classes (supports kleuter ordering)
+        self::addColumnIfMissing($pdo, 'classes', 'rank',
+            "ALTER TABLE classes ADD COLUMN rank INT NOT NULL DEFAULT 0");
+        // Seed kleuter classes into existing installations
+        self::seedKleuterClasses($pdo);
+        // Back-fill ranks for known class names
+        self::backfillClassRanks($pdo);
+
+        // Class-rank–based filtering columns for option items (replaces grade 1-6 filter)
+        self::addColumnIfMissing($pdo, 'event_option_items', 'min_class_rank',
+            "ALTER TABLE event_option_items ADD COLUMN min_class_rank INT NOT NULL DEFAULT 0");
+        self::addColumnIfMissing($pdo, 'event_option_items', 'max_class_rank',
+            "ALTER TABLE event_option_items ADD COLUMN max_class_rank INT NOT NULL DEFAULT 0");
     }
 
-    /** Seed the default 12 school classes if the classes table is empty. */
+    /** Seed the default 18 school classes (kleuter + lagere) if the classes table is empty. */
     private static function seedClasses(\PDO $pdo): void
     {
         $count = (int) $pdo->query("SELECT COUNT(*) FROM classes")->fetchColumn();
         if ($count > 0) {
             return;
         }
-        $defaults = ['1A','1B','2A','2B','3A','3B','4A','4B','5A','5B','6A','6B'];
-        $stmt     = $pdo->prepare("INSERT IGNORE INTO classes (name) VALUES (:name)");
-        foreach ($defaults as $name) {
-            $stmt->execute([':name' => $name]);
+        $defaults = \App\Models\OcClass::RANK_MAP; // name => rank
+        $stmt     = $pdo->prepare("INSERT IGNORE INTO classes (name, rank) VALUES (:name, :rank)");
+        foreach ($defaults as $name => $rank) {
+            $stmt->execute([':name' => $name, ':rank' => $rank]);
+        }
+    }
+
+    /** Add kleuter classes (1KA-3KB) to existing installations that only have 1A-6B. */
+    private static function seedKleuterClasses(\PDO $pdo): void
+    {
+        $kleuterMap = [
+            '1KA' => 10, '1KB' => 11,
+            '2KA' => 20, '2KB' => 21,
+            '3KA' => 30, '3KB' => 31,
+        ];
+        $stmt = $pdo->prepare("INSERT IGNORE INTO classes (name, rank) VALUES (:name, :rank)");
+        foreach ($kleuterMap as $name => $rank) {
+            $stmt->execute([':name' => $name, ':rank' => $rank]);
+        }
+    }
+
+    /** Back-fill the rank column for known class names that still have rank = 0. */
+    private static function backfillClassRanks(\PDO $pdo): void
+    {
+        $stmt = $pdo->prepare("UPDATE classes SET rank = :rank WHERE name = :name AND rank = 0");
+        foreach (\App\Models\OcClass::RANK_MAP as $name => $rank) {
+            $stmt->execute([':rank' => $rank, ':name' => $name]);
         }
     }
 

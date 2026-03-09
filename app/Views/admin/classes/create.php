@@ -42,7 +42,7 @@
                                placeholder="bijv. 3A"
                                maxlength="20"
                                required>
-                        <div class="form-text">Jaarcijfer (1-6) gevolgd door een letter, bijv. <code>3A</code>.</div>
+                        <div class="form-text">Lagere school: jaarcijfer (1-6) + letter, bijv. <code>3A</code>. Kleuter: <code>1KA</code>, <code>2KB</code>, enz.</div>
                     </div>
 
                     <div class="d-flex gap-2">
