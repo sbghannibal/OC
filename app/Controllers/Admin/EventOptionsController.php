@@ -10,6 +10,7 @@ use App\Core\View;
 use App\Models\Event;
 use App\Models\EventOptionGroup;
 use App\Models\EventOptionItem;
+use App\Models\OcClass;
 
 final class EventOptionsController
 {
@@ -47,10 +48,13 @@ final class EventOptionsController
         }
         unset($group);
 
+        $classes = OcClass::all($pdo);
+
         View::render('admin/event_options/index', [
-            'event'  => $event,
-            'groups' => $groups,
-            'errors' => [],
+            'event'   => $event,
+            'groups'  => $groups,
+            'classes' => $classes,
+            'errors'  => [],
         ]);
     }
 
@@ -92,10 +96,12 @@ final class EventOptionsController
                 $group['items'] = EventOptionItem::findByGroup($pdo, (int) $group['id']);
             }
             unset($group);
+            $classes = OcClass::all($pdo);
             View::render('admin/event_options/index', [
-                'event'  => $event,
-                'groups' => $groups,
-                'errors' => $errors,
+                'event'   => $event,
+                'groups'  => $groups,
+                'classes' => $classes,
+                'errors'  => $errors,
             ]);
             return;
         }
@@ -184,20 +190,24 @@ final class EventOptionsController
             return;
         }
 
-        $name      = trim((string) ($_POST['name']       ?? ''));
-        $minGrade  = max(1, min(6, (int) ($_POST['min_grade'] ?? 1)));
-        $maxGrade  = max(1, min(6, (int) ($_POST['max_grade'] ?? 6)));
-        $sortOrder = (int) ($_POST['sort_order'] ?? 0);
-        $price     = max(0.0, (float) str_replace(',', '.', (string) ($_POST['price'] ?? '0')));
+        $name           = trim((string) ($_POST['name']       ?? ''));
+        $sortOrder      = (int) ($_POST['sort_order'] ?? 0);
+        $price          = max(0.0, (float) str_replace(',', '.', (string) ($_POST['price'] ?? '0')));
+        [$minClassRank, $maxClassRank] = self::resolveClassRanks(
+            (int) ($_POST['min_class_rank'] ?? 0),
+            (int) ($_POST['max_class_rank'] ?? 0)
+        );
 
         if ($name !== '') {
             EventOptionItem::create($pdo, [
-                'group_id'   => $groupId,
-                'name'       => $name,
-                'min_grade'  => $minGrade,
-                'max_grade'  => max($minGrade, $maxGrade),
-                'sort_order' => $sortOrder,
-                'price'      => $price,
+                'group_id'       => $groupId,
+                'name'           => $name,
+                'min_grade'      => 1,
+                'max_grade'      => 6,
+                'sort_order'     => $sortOrder,
+                'price'          => $price,
+                'min_class_rank' => $minClassRank,
+                'max_class_rank' => $maxClassRank,
             ]);
         }
 
@@ -223,9 +233,72 @@ final class EventOptionsController
         $this->redirectToIndex($basePath, $slug);
     }
 
+    /**
+     * POST /admin/events/{slug}/opties/{group_id}/items/{item_id}/update
+     * Update an existing option item.
+     */
+    public function updateItem(string $slug, int $groupId, int $itemId): void
+    {
+        $this->requireAuth();
+        $basePath = $this->config['base_path'] ?? '';
+        $pdo      = Database::getInstance($this->config['db']);
+
+        if (!Csrf::verify()) {
+            $this->redirectToIndex($basePath, $slug);
+            return;
+        }
+
+        $item = EventOptionItem::findById($pdo, $itemId);
+        if ($item === null) {
+            http_response_code(404);
+            View::render('errors/404', []);
+            return;
+        }
+
+        $name      = trim((string) ($_POST['name']      ?? ''));
+        $sortOrder = (int) ($_POST['sort_order']  ?? $item['sort_order']);
+        $price     = max(0.0, (float) str_replace(',', '.', (string) ($_POST['price'] ?? (string) $item['price'])));
+        [$minClassRank, $maxClassRank] = self::resolveClassRanks(
+            (int) ($_POST['min_class_rank'] ?? 0),
+            (int) ($_POST['max_class_rank'] ?? 0)
+        );
+
+        if ($name === '') {
+            $this->redirectToIndex($basePath, $slug);
+            return;
+        }
+
+        EventOptionItem::update($pdo, $itemId, [
+            'name'           => $name,
+            'min_grade'      => (int) ($item['min_grade'] ?? 1),
+            'max_grade'      => (int) ($item['max_grade'] ?? 6),
+            'sort_order'     => $sortOrder,
+            'price'          => $price,
+            'min_class_rank' => $minClassRank,
+            'max_class_rank' => $maxClassRank,
+        ]);
+
+        $this->redirectToIndex($basePath, $slug);
+    }
+
     private function redirectToIndex(string $basePath, string $slug): never
     {
         header('Location: ' . $basePath . '/admin/events/' . rawurlencode($slug) . '/opties');
         exit;
+    }
+
+    /**
+     * Normalise min/max class rank values from POST input.
+     * - min and max are both floored at 0.
+     * - When max > 0, it is raised to at least min to prevent an inverted range.
+     * - max = 0 means "no upper limit" and is not constrained.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private static function resolveClassRanks(int $minClassRank, int $maxClassRank): array
+    {
+        $min = max(0, $minClassRank);
+        $max = ($maxClassRank > 0) ? max($min, $maxClassRank) : 0;
+        return [$min, $max];
     }
 }

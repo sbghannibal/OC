@@ -201,6 +201,10 @@ $router->post('/admin/events/{slug}/opties/{group_id}/items/{item_id}/delete', f
     (new EventOptionsController($config))->deleteItem($params['slug'], (int) $params['group_id'], (int) $params['item_id']);
 });
 
+$router->post('/admin/events/{slug}/opties/{group_id}/items/{item_id}/update', function (array $params) use ($config): void {
+    (new EventOptionsController($config))->updateItem($params['slug'], (int) $params['group_id'], (int) $params['item_id']);
+});
+
 // ── Registrations routes ───────────────────────────────────────────────────
 $router->get('/admin/inschrijvingen', function () use ($config): void {
     (new RegistrationController($config))->index();

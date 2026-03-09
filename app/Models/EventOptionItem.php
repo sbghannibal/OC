@@ -32,6 +32,29 @@ final class EventOptionItem
         return $stmt->fetchAll() ?: [];
     }
 
+    /**
+     * Find items for a group that are visible to the given class rank.
+     * A rank of 0 in min_class_rank / max_class_rank means "no restriction" for that bound.
+     * Falls back to showing all items when classRank is 0 (unknown class).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function findByGroupForClassRank(\PDO $pdo, int $groupId, int $classRank): array
+    {
+        if ($classRank === 0) {
+            return self::findByGroup($pdo, $groupId);
+        }
+        $stmt = $pdo->prepare(
+            "SELECT * FROM event_option_items
+             WHERE group_id = :group_id
+               AND (min_class_rank = 0 OR min_class_rank <= :class_rank)
+               AND (max_class_rank = 0 OR max_class_rank >= :class_rank)
+             ORDER BY sort_order ASC, id ASC"
+        );
+        $stmt->execute([':group_id' => $groupId, ':class_rank' => $classRank]);
+        return $stmt->fetchAll() ?: [];
+    }
+
     /** @return array<string,mixed>|null */
     public static function findById(\PDO $pdo, int $id): ?array
     {
@@ -42,43 +65,50 @@ final class EventOptionItem
     }
 
     /**
-     * @param array{group_id: int, name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float} $data
+     * @param array{group_id: int, name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float, min_class_rank?: int, max_class_rank?: int} $data
      */
     public static function create(\PDO $pdo, array $data): int
     {
         $stmt = $pdo->prepare(
-            "INSERT INTO event_option_items (group_id, name, min_grade, max_grade, sort_order, price)
-             VALUES (:group_id, :name, :min_grade, :max_grade, :sort_order, :price)"
+            "INSERT INTO event_option_items
+                (group_id, name, min_grade, max_grade, sort_order, price, min_class_rank, max_class_rank)
+             VALUES
+                (:group_id, :name, :min_grade, :max_grade, :sort_order, :price, :min_class_rank, :max_class_rank)"
         );
         $stmt->execute([
-            ':group_id'  => $data['group_id'],
-            ':name'      => $data['name'],
-            ':min_grade' => $data['min_grade'],
-            ':max_grade' => $data['max_grade'],
-            ':sort_order'=> $data['sort_order'] ?? 0,
-            ':price'     => $data['price'] ?? 0.00,
+            ':group_id'       => $data['group_id'],
+            ':name'           => $data['name'],
+            ':min_grade'      => $data['min_grade'],
+            ':max_grade'      => $data['max_grade'],
+            ':sort_order'     => $data['sort_order'] ?? 0,
+            ':price'          => $data['price'] ?? 0.00,
+            ':min_class_rank' => $data['min_class_rank'] ?? 0,
+            ':max_class_rank' => $data['max_class_rank'] ?? 0,
         ]);
         return (int) $pdo->lastInsertId();
     }
 
     /**
-     * @param array{name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float} $data
+     * @param array{name: string, min_grade: int, max_grade: int, sort_order?: int, price?: float, min_class_rank?: int, max_class_rank?: int} $data
      */
     public static function update(\PDO $pdo, int $id, array $data): void
     {
         $stmt = $pdo->prepare(
             "UPDATE event_option_items
              SET name = :name, min_grade = :min_grade, max_grade = :max_grade,
-                 sort_order = :sort_order, price = :price
+                 sort_order = :sort_order, price = :price,
+                 min_class_rank = :min_class_rank, max_class_rank = :max_class_rank
              WHERE id = :id"
         );
         $stmt->execute([
-            ':name'      => $data['name'],
-            ':min_grade' => $data['min_grade'],
-            ':max_grade' => $data['max_grade'],
-            ':sort_order'=> $data['sort_order'] ?? 0,
-            ':price'     => $data['price'] ?? 0.00,
-            ':id'        => $id,
+            ':name'           => $data['name'],
+            ':min_grade'      => $data['min_grade'],
+            ':max_grade'      => $data['max_grade'],
+            ':sort_order'     => $data['sort_order'] ?? 0,
+            ':price'          => $data['price'] ?? 0.00,
+            ':min_class_rank' => $data['min_class_rank'] ?? 0,
+            ':max_class_rank' => $data['max_class_rank'] ?? 0,
+            ':id'             => $id,
         ]);
     }
 

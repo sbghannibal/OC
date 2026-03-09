@@ -58,7 +58,7 @@ final class ClassController
         if ($name === '') {
             $errors[] = 'Naam is verplicht.';
         } elseif (!preg_match(OcClass::NAME_PATTERN, $name)) {
-            $errors[] = 'Naam moet het formaat hebben van een jaarcijfer (1-6) gevolgd door een letter (bijv. 3A).';
+            $errors[] = 'Naam moet het formaat hebben van een jaarcijfer gevolgd door een letter (bijv. 3A) of een kleuterklas (bijv. 1KA, 2KB).';
         }
 
         if ($errors !== []) {
